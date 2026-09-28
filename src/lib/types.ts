@@ -92,13 +92,31 @@ export interface View extends Syncable {
 
 export type CalendarCategory = 'laboral' | 'personal' | 'uade'
 
-/** A linked calendar (Google, Outlook…) read through its private iCal link. Synced across devices. */
+/** A linked calendar: a Google Calendar of a linked account, or an iCal link (Outlook…). Synced. */
 export interface CalendarSource extends Syncable {
+  provider?: 'ics' | 'google' // missing = 'ics' (older rows)
   name: string
+  /** iCal link (provider 'ics'). */
   url: string
+  /** Linked Google account and calendar (provider 'google'). */
+  account_id?: string | null
+  calendar_id?: string | null
   category: CalendarCategory
   color: string
   enabled: 0 | 1
+}
+
+/** A linked Google account (Calendar + Drive). id = Google account id ("sub"). Synced. */
+export interface GoogleAccount extends Syncable {
+  email: string
+  name: string
+  picture: string
+  /** Refresh token encrypted by the server; only the server can use it. */
+  token: string
+  /** Category given to its calendars when they're added. */
+  category: CalendarCategory
+  /** Set when Google revoked access and the account must be linked again. */
+  needs_reauth?: 0 | 1
 }
 
 /** Local cache of events fetched from a CalendarSource (each device fetches its own). */

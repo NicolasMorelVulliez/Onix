@@ -1,24 +1,39 @@
 /// <reference types="vitest/config" />
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
-import { POST as icsHandler } from './api/ics.ts'
+import * as googleCallback from './api/google/callback.js'
+import * as googleStart from './api/google/start.js'
+import * as googleToken from './api/google/token.js'
+import * as ics from './api/ics.js'
 
-/** Serves the Vercel function in /api/ics during `npm run dev`. */
+type Handler = (request: Request) => Promise<Response> | Response
+const routes: Record<string, Record<string, Handler | undefined>> = {
+  '/api/ics': ics,
+  '/api/google/start': googleStart,
+  '/api/google/callback': googleCallback,
+  '/api/google/token': googleToken,
+}
+
+/** Serves the Vercel functions in /api during `npm run dev`. */
 function devApi(): Plugin {
   return {
     name: 'dev-api',
     configureServer(server) {
-      server.middlewares.use('/api/ics', async (req, res) => {
+      Object.assign(process.env, loadEnv('development', process.cwd(), ''))
+      server.middlewares.use(async (req, res, next) => {
+        const url = new URL(req.url ?? '/', `http://${req.headers.host}`)
+        const handler = routes[url.pathname]?.[req.method ?? 'GET']
+        if (!handler) return next()
         const chunks: Buffer[] = []
         for await (const c of req) chunks.push(c as Buffer)
-        const response = await icsHandler(
-          new Request('http://localhost/api/ics', { method: 'POST', body: Buffer.concat(chunks), headers: { 'content-type': 'application/json' } }),
-        )
+        const headers = new Headers(req.headers as Record<string, string>)
+        const body = req.method === 'GET' || req.method === 'HEAD' ? undefined : Buffer.concat(chunks)
+        const response = await handler(new Request(url, { method: req.method, headers, body }))
         res.statusCode = response.status
         response.headers.forEach((v, k) => res.setHeader(k, v))
-        res.end(await response.text())
+        res.end(Buffer.from(await response.arrayBuffer()))
       })
     },
   }

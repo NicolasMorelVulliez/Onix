@@ -2,9 +2,10 @@ import { BlockNoteSchema, defaultBlockSpecs } from '@blocknote/core'
 import { createReactBlockSpec } from '@blocknote/react'
 import { Link } from '@tanstack/react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { FileText } from 'lucide-react'
+import { ExternalLink, Eye, EyeOff, FileText } from 'lucide-react'
 import { useState } from 'react'
 import { db } from '../lib/db'
+import { drivePreviewUrl } from '../lib/google'
 import { toEmbedUrl } from './embed'
 
 const CALLOUT_EMOJIS = ['💡', '⚠️', '📌', '✅', '❗', '📝', '🔥', 'ℹ️']
@@ -124,12 +125,70 @@ export const Embed = createReactBlockSpec(
   },
 )
 
+function DriveFileView({ props }: { props: DriveFileProps }) {
+  const account = useLiveQuery(() => db.google_accounts.get(props.accountId), [props.accountId])
+  const [preview, setPreview] = useState(false)
+  const isFolder = props.mimeType === 'application/vnd.google-apps.folder'
+  return (
+    <div className="w-full">
+      <div className="flex items-center gap-2 rounded-md border border-(--border) px-3 py-2">
+        {props.iconLink ? <img src={props.iconLink} alt="" className="size-4" /> : <FileText className="size-4 text-muted" />}
+        <a href={props.webViewLink} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate font-medium hover:underline">
+          {props.name}
+        </a>
+        <span className="truncate text-xs text-muted max-md:hidden">{account?.email ?? 'cuenta no vinculada'}</span>
+        {!isFolder && account && (
+          <button type="button" title={preview ? 'Ocultar vista previa' : 'Vista previa'} onClick={() => setPreview(!preview)} className="rounded p-1 text-muted hover:bg-hover">
+            {preview ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        )}
+        <a href={props.webViewLink} target="_blank" rel="noreferrer" title="Abrir en Drive" className="rounded p-1 text-muted hover:bg-hover">
+          <ExternalLink className="size-4" />
+        </a>
+      </div>
+      {preview && account && (
+        <iframe
+          src={drivePreviewUrl({ id: props.fileId, webViewLink: props.webViewLink }, account.email)}
+          title={props.name}
+          className="mt-1 w-full rounded-md border border-(--border)"
+          style={{ aspectRatio: '4 / 3' }}
+          allow="autoplay; fullscreen"
+          loading="lazy"
+        />
+      )}
+    </div>
+  )
+}
+
+const driveProps = {
+  accountId: { default: '' },
+  fileId: { default: '' },
+  name: { default: '' },
+  mimeType: { default: '' },
+  iconLink: { default: '' },
+  webViewLink: { default: '' },
+} as const
+type DriveFileProps = { [K in keyof typeof driveProps]: string }
+
+/** A file of a linked Google Drive account. */
+export const DriveFileBlock = createReactBlockSpec(
+  { type: 'driveFile', propSchema: driveProps, content: 'none' },
+  {
+    render: ({ block }) => (
+      <div contentEditable={false} className="w-full">
+        <DriveFileView props={block.props} />
+      </div>
+    ),
+  },
+)
+
 export const schema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
     callout: Callout(),
     pageLink: PageLink(),
     embed: Embed(),
+    driveFile: DriveFileBlock(),
   },
 })
 

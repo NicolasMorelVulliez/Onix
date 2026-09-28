@@ -1,10 +1,13 @@
-import { Link, useNavigate, useParams } from '@tanstack/react-router'
+import { signOut } from 'firebase/auth'
+import { useNavigate, useParams } from '@tanstack/react-router'
 import {
   CalendarDays,
   ChevronRight,
   Copy,
   Database,
   FileText,
+  HardDrive,
+  Link2,
   LogOut,
   MoreHorizontal,
   Plus,
@@ -14,7 +17,7 @@ import {
 import { useMemo, useState, type DragEvent } from 'react'
 import { useTreePages } from '../lib/hooks'
 import { createDatabase, createPage, duplicatePage, movePage, trashPage } from '../lib/pages'
-import { supabase } from '../lib/supabase'
+import { auth } from '../lib/firebase'
 import { useSyncStatus } from '../lib/sync'
 import type { Page } from '../lib/types'
 import { useUI } from '../lib/ui-store'
@@ -50,6 +53,10 @@ export function Sidebar() {
 
   const open = (id: string) => {
     navigate({ to: '/p/$pageId', params: { pageId: id } })
+    setSidebarOpen(false)
+  }
+  const go = (to: '/calendar' | '/drive' | '/accounts' | '/trash') => {
+    navigate({ to })
     setSidebarOpen(false)
   }
 
@@ -93,14 +100,11 @@ export function Sidebar() {
         <SideButton icon={<Plus size={16} />} onClick={async () => open((await createPage()).id)}>
           Nueva página
         </SideButton>
-        <SideButton
-          icon={<CalendarDays size={16} />}
-          onClick={() => {
-            navigate({ to: '/calendar' })
-            setSidebarOpen(false)
-          }}
-        >
+        <SideButton icon={<CalendarDays size={16} />} onClick={() => go('/calendar')}>
           Calendario
+        </SideButton>
+        <SideButton icon={<HardDrive size={16} />} onClick={() => go('/drive')}>
+          Drive
         </SideButton>
       </div>
 
@@ -116,11 +120,14 @@ export function Sidebar() {
       </div>
 
       <div className="safe-bottom border-t border-line px-2 py-2">
-        <Link to="/trash" onClick={() => setSidebarOpen(false)}>
-          <SideButton icon={<Trash2 size={16} />}>Papelera</SideButton>
-        </Link>
-        {supabase && (
-          <SideButton icon={<LogOut size={16} />} onClick={() => supabase!.auth.signOut()}>
+        <SideButton icon={<Link2 size={16} />} onClick={() => go('/accounts')}>
+          Cuentas
+        </SideButton>
+        <SideButton icon={<Trash2 size={16} />} onClick={() => go('/trash')}>
+          Papelera
+        </SideButton>
+        {auth && (
+          <SideButton icon={<LogOut size={16} />} onClick={() => signOut(auth!)}>
             Cerrar sesión
           </SideButton>
         )}
@@ -141,7 +148,7 @@ function SideButton({ icon, children, onClick }: { icon: React.ReactNode; childr
 function SyncDot() {
   const { status, error } = useSyncStatus()
   const map = {
-    local: ['bg-gray-400', 'Solo local (sin Supabase configurado)'],
+    local: ['bg-gray-400', 'Solo local (sin Firebase configurado)'],
     idle: ['bg-green-500', 'Sincronizado'],
     syncing: ['bg-blue-500 animate-pulse', 'Sincronizando…'],
     offline: ['bg-yellow-500', 'Sin conexión: los cambios se guardan y se suben al volver'],

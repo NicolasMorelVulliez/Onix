@@ -1,25 +1,22 @@
-import { supabase } from './supabase'
-import { uid } from './util'
+const MAX_SIDE = 1600
+const MAX_BYTES = 600 * 1024
 
-const TEN_YEARS = 60 * 60 * 24 * 365 * 10
-
-/** Uploads a file (image, PDF, video…) and returns a URL usable inside a page. */
+/**
+ * Images uploaded in the editor are stored inside the page (Firestore's free plan has no
+ * file storage), shrunk to 1600px so a page stays under Firestore's 1 MB document limit.
+ * Anything else belongs in Drive: link it with "/Archivo de Drive".
+ */
 export async function uploadFile(file: File): Promise<string> {
-  if (!supabase) {
-    // Local-only mode: keep the file inline.
-    return new Promise((resolve, reject) => {
-      const r = new FileReader()
-      r.onload = () => resolve(r.result as string)
-      r.onerror = () => reject(r.error)
-      r.readAsDataURL(file)
-    })
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Subí el archivo a Google Drive y vinculalo con /drive')
   }
-  const { data: auth } = await supabase.auth.getUser()
-  const ext = file.name.split('.').pop()
-  const path = `${auth.user!.id}/${uid()}${ext ? `.${ext}` : ''}`
-  const { error } = await supabase.storage.from('files').upload(path, file, { contentType: file.type })
-  if (error) throw error
-  const { data, error: signError } = await supabase.storage.from('files').createSignedUrl(path, TEN_YEARS)
-  if (signError) throw signError
-  return data.signedUrl
+  const bitmap = await createImageBitmap(file)
+  const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(bitmap.width * scale)
+  canvas.height = Math.round(bitmap.height * scale)
+  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  const url = canvas.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.82)
+  if (url.length > MAX_BYTES) return canvas.toDataURL('image/jpeg', 0.7)
+  return url
 }

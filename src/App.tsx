@@ -1,7 +1,10 @@
-import type { Session } from '@supabase/supabase-js'
+import { onAuthStateChanged, type User } from 'firebase/auth'
 import { createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import { AccountsPage } from './components/AccountsPage'
 import { CalendarView } from './components/calendar/CalendarView'
+import { DrivePicker } from './components/drive/DrivePicker'
+import { DriveView } from './components/drive/DriveView'
 import { Home } from './components/Home'
 import { Login } from './components/Login'
 import { PageView } from './components/PageView'
@@ -9,7 +12,7 @@ import { SearchPalette } from './components/SearchPalette'
 import { Sidebar } from './components/Sidebar'
 import { TrashView } from './components/TrashView'
 import { startSync } from './lib/sync'
-import { supabase } from './lib/supabase'
+import { auth } from './lib/firebase'
 import { useUI } from './lib/ui-store'
 import { cx } from './lib/util'
 
@@ -31,6 +34,7 @@ function Layout() {
         <Outlet />
       </main>
       <SearchPalette />
+      <DrivePicker />
     </div>
   )
 }
@@ -40,7 +44,9 @@ const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', comp
 const pageRoute = createRoute({ getParentRoute: () => rootRoute, path: '/p/$pageId', component: PageRoute })
 const trashRoute = createRoute({ getParentRoute: () => rootRoute, path: '/trash', component: TrashView })
 const calendarRoute = createRoute({ getParentRoute: () => rootRoute, path: '/calendar', component: CalendarView })
-const routeTree = rootRoute.addChildren([homeRoute, pageRoute, trashRoute, calendarRoute])
+const driveRoute = createRoute({ getParentRoute: () => rootRoute, path: '/drive', component: DriveView })
+const accountsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/accounts', component: AccountsPage })
+const routeTree = rootRoute.addChildren([homeRoute, pageRoute, trashRoute, calendarRoute, driveRoute, accountsRoute])
 
 function PageRoute() {
   const { pageId } = pageRoute.useParams()
@@ -56,19 +62,14 @@ declare module '@tanstack/react-router' {
 }
 
 export function App() {
-  const [session, setSession] = useState<Session | null | undefined>(supabase ? undefined : null)
+  const [user, setUser] = useState<User | null | undefined>(auth ? undefined : null)
 
-  useEffect(() => {
-    if (!supabase) return
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
-    return () => data.subscription.unsubscribe()
-  }, [])
+  useEffect(() => (auth ? onAuthStateChanged(auth, setUser) : undefined), [])
 
-  const userId = session?.user.id
+  const userId = user?.uid
   useEffect(() => (userId ? startSync(userId) : undefined), [userId])
 
-  if (supabase && session === undefined) return null
-  if (supabase && !session) return <Login />
+  if (auth && user === undefined) return null
+  if (auth && !user) return <Login />
   return <RouterProvider router={router} />
 }

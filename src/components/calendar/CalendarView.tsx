@@ -19,7 +19,6 @@ import { useColorScheme } from '../../lib/useColorScheme'
 import { useUI } from '../../lib/ui-store'
 import { cx } from '../../lib/util'
 import { TopBar } from '../TopBar'
-import { AccountsDialog } from './AccountsDialog'
 import { EventDialog } from './EventDialog'
 
 const TASKS = { id: 'tareas', label: 'Tareas', color: '#787774' }
@@ -53,7 +52,6 @@ export function CalendarView() {
   const navigate = useNavigate()
   const hidden = useUI((s) => s.hiddenLayers)
   const setHidden = useUI((s) => s.setHiddenLayers)
-  const [accountsOpen, setAccountsOpen] = useState(false)
   const [selected, setSelected] = useState<CalendarEvent | null>(null)
   const status = useCalendarStatus()
   const loading = Object.values(status).some((s) => s.loading)
@@ -118,7 +116,7 @@ export function CalendarView() {
             </button>
             <button
               type="button"
-              onClick={() => setAccountsOpen(true)}
+              onClick={() => navigate({ to: '/accounts' })}
               className="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-sm hover:bg-hover"
             >
               <Link2 size={14} /> Cuentas
@@ -130,10 +128,10 @@ export function CalendarView() {
         {sources?.length === 0 && (
           <button
             type="button"
-            onClick={() => setAccountsOpen(true)}
+            onClick={() => navigate({ to: '/accounts' })}
             className="mb-3 w-full rounded-md border border-dashed border-line p-3 text-left text-sm text-muted hover:bg-hover"
           >
-            Todavía no vinculaste calendarios. Tocá acá para conectar EGS (Google), tu calendario personal y UADE (Outlook).
+            Todavía no vinculaste calendarios. Tocá acá para conectar tus cuentas de Google (EGS, personal) y el link de UADE (Outlook).
           </button>
         )}
 
@@ -162,7 +160,6 @@ export function CalendarView() {
           />
         </div>
       </div>
-      {accountsOpen && <AccountsDialog onClose={() => setAccountsOpen(false)} />}
       {selected && <EventDialog event={selected} source={sources?.find((s) => s.id === selected.source_id)} onClose={() => setSelected(null)} />}
     </>
   )

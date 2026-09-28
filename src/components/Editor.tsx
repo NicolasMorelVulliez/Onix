@@ -10,11 +10,13 @@ import {
   type DefaultReactSuggestionItem,
 } from '@blocknote/react'
 import { useNavigate } from '@tanstack/react-router'
-import { Database, FileText, Frame, MessageSquareQuote } from 'lucide-react'
+import { Database, FileText, Frame, HardDrive, MessageSquareQuote } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
 import { schema, type AppEditor } from '../blocks/schema'
 import { uploadFile } from '../lib/files'
+import { driveBlock } from '../lib/drive-block'
 import { createDatabase, createPage, updatePage } from '../lib/pages'
+import { useDrivePicker } from './drive/DrivePicker'
 import type { Page } from '../lib/types'
 import { debounce } from '../lib/util'
 import { useColorScheme } from '../lib/useColorScheme'
@@ -52,6 +54,15 @@ function customItems(editor: AppEditor, page: Page, open: (id: string) => void):
       group: 'Bloques básicos',
       icon: <MessageSquareQuote size={18} />,
       onItemClick: () => insertOrUpdateBlockForSlashMenu(editor, { type: 'callout' }),
+    },
+    {
+      title: 'Archivo de Drive',
+      subtext: 'Vincular un archivo de tus cuentas de Google Drive',
+      aliases: ['drive', 'google', 'archivo', 'doc', 'sheet', 'pdf'],
+      group: 'Multimedia',
+      icon: <HardDrive size={18} />,
+      onItemClick: () =>
+        useDrivePicker.getState().open((file, accountId) => insertOrUpdateBlockForSlashMenu(editor, driveBlock(file, accountId))),
     },
     {
       title: 'Embed',

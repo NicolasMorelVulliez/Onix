@@ -1,8 +1,10 @@
 import { create } from 'zustand'
 import { db, getMeta, setMeta } from './db'
+import { API_URL } from './firebase'
+import { fetchGoogleEvents, type GoogleCalendar } from './google'
 import { parseIcs } from './ics'
 import { schedulePush } from './sync'
-import type { CalendarCategory, CalendarSource } from './types'
+import type { CalendarCategory, CalendarSource, GoogleAccount } from './types'
 import { now, uid } from './util'
 
 export const CATEGORIES: { id: CalendarCategory; label: string; color: string }[] = [
@@ -19,7 +21,7 @@ export const useCalendarStatus = create<Record<string, { loading?: boolean; erro
 const setStatus = (id: string, s: { loading?: boolean; error?: string }) =>
   useCalendarStatus.setState((all) => ({ ...all, [id]: s }))
 
-export async function addSource(init: Pick<CalendarSource, 'name' | 'url' | 'category'>) {
+async function saveSource(init: Partial<CalendarSource> & Pick<CalendarSource, 'name' | 'category'>) {
   const t = now()
   const source: CalendarSource = {
     id: uid(),
@@ -28,15 +30,43 @@ export async function addSource(init: Pick<CalendarSource, 'name' | 'url' | 'cat
     deleted_at: null,
     purged: 0,
     dirty: 1,
+    provider: 'ics',
+    url: '',
     color: CATEGORIES.find((c) => c.id === init.category)!.color,
     enabled: 1,
     ...init,
-    url: init.url.trim(),
   }
-  await db.calendar_sources.add(source)
+  await db.calendar_sources.put(source)
   schedulePush()
   await refreshSource(source)
   return source
+}
+
+/** Adds an iCal link (Outlook / UADE…). */
+export function addSource(init: Pick<CalendarSource, 'name' | 'url' | 'category'>) {
+  return saveSource({ ...init, url: init.url.trim() })
+}
+
+/** Shows (or hides) one calendar of a linked Google account. */
+export async function setGoogleCalendar(account: GoogleAccount, cal: GoogleCalendar, enabled: boolean) {
+  const existing = await db.calendar_sources
+    .filter((s) => s.account_id === account.id && s.calendar_id === cal.id && !s.deleted_at)
+    .first()
+  if (existing) {
+    await updateSource(existing.id, { enabled: enabled ? 1 : 0 })
+    if (enabled) refreshSource({ ...existing, enabled: 1 })
+    else await db.events.where('source_id').equals(existing.id).delete()
+    return
+  }
+  if (!enabled) return
+  await saveSource({
+    provider: 'google',
+    name: cal.summary,
+    account_id: account.id,
+    calendar_id: cal.id,
+    category: account.category,
+    color: cal.backgroundColor ?? CATEGORIES.find((c) => c.id === account.category)!.color,
+  })
 }
 
 export async function updateSource(id: string, changes: Partial<CalendarSource>) {
@@ -49,18 +79,27 @@ export async function removeSource(id: string) {
   await db.events.where('source_id').equals(id).delete()
 }
 
-/** Downloads the source's .ics and replaces its cached events (from 2 months ago to 1 year ahead). */
+async function downloadIcs(url: string) {
+  const res = await fetch(`${API_URL}/api/ics`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ url }),
+  })
+  if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? `Error ${res.status}`)
+  return res.text()
+}
+
+/** Downloads the source's events and replaces its cached events (from 2 months ago to 1 year ahead). */
 export async function refreshSource(source: CalendarSource) {
   setStatus(source.id, { loading: true })
   try {
-    const res = await fetch('/api/ics', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ url: source.url }),
-    })
-    if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? `Error ${res.status}`)
     const t = Date.now()
-    const events = parseIcs(await res.text(), source.id, new Date(t - 60 * DAY), new Date(t + 365 * DAY))
+    const from = new Date(t - 60 * DAY)
+    const to = new Date(t + 365 * DAY)
+    const events =
+      source.provider === 'google'
+        ? await fetchGoogleEvents(source.account_id!, source.calendar_id!, source.id, from, to)
+        : parseIcs(await downloadIcs(source.url), source.id, from, to)
     await db.transaction('rw', db.events, async () => {
       await db.events.where('source_id').equals(source.id).delete()
       await db.events.bulkPut(events)

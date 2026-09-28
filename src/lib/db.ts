@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { CalendarEvent, CalendarSource, Page, View } from './types'
+import type { CalendarEvent, CalendarSource, GoogleAccount, Page, View } from './types'
 
 interface Meta {
   key: string
@@ -11,6 +11,7 @@ class AppDB extends Dexie {
   views!: EntityTable<View, 'id'>
   calendar_sources!: EntityTable<CalendarSource, 'id'>
   events!: EntityTable<CalendarEvent, 'id'>
+  google_accounts!: EntityTable<GoogleAccount, 'id'>
   meta!: EntityTable<Meta, 'key'>
 
   constructor() {
@@ -24,12 +25,13 @@ class AppDB extends Dexie {
       calendar_sources: 'id, dirty',
       events: 'id, source_id, start',
     })
+    this.version(3).stores({ google_accounts: 'id, dirty' })
   }
 }
 
 export const db = new AppDB()
 
-export const SYNCED_TABLES = ['pages', 'views', 'calendar_sources'] as const
+export const SYNCED_TABLES = ['pages', 'views', 'calendar_sources', 'google_accounts'] as const
 export type SyncedTable = (typeof SYNCED_TABLES)[number]
 
 export async function getMeta(key: string) {

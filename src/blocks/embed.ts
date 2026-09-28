@@ -16,7 +16,7 @@ export function toEmbedUrl(raw: string): { src: string; ratio: string } {
   if (host === 'vimeo.com') return { src: `https://player.vimeo.com/video${url.pathname}`, ratio: '16 / 9' }
   if (host === 'loom.com') return { src: raw.replace('/share/', '/embed/'), ratio: '16 / 9' }
   if (host === 'figma.com') {
-    return { src: `https://www.figma.com/embed?embed_host=espacio&url=${encodeURIComponent(raw)}`, ratio: '4 / 3' }
+    return { src: `https://www.figma.com/embed?embed_host=onix&url=${encodeURIComponent(raw)}`, ratio: '4 / 3' }
   }
   if (host === 'drive.google.com') {
     // /file/d/<id>/view -> /file/d/<id>/preview

@@ -17,7 +17,7 @@ registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html')))
 self.addEventListener('push', (event) => {
   const data = event.data?.json() ?? {}
   event.waitUntil(
-    self.registration.showNotification(data.title ?? 'Espacio', {
+    self.registration.showNotification(data.title ?? 'Onix', {
       body: data.body,
       icon: '/icon-192.png',
       badge: '/icon-192.png',

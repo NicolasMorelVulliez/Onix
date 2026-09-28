@@ -29,7 +29,7 @@ export function Login() {
     <div className="flex min-h-full items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center gap-2 text-xl font-semibold">
-          <span className="flex size-7 items-center justify-center rounded bg-fg text-sm text-bg">E</span> Espacio
+          <img src="/icon.svg" alt="" className="size-9 rounded-[9px] shadow-sm" /> Onix
         </div>
         <button
           type="button"

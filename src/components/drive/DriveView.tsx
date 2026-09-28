@@ -20,7 +20,7 @@ export function DriveView() {
       </TopBar>
       <div className="flex gap-4 px-8 pb-10 pt-4 max-md:flex-col max-md:px-3">
         <div className="min-w-0 flex-1">
-          <h1 className="mb-4 text-3xl font-bold max-md:text-2xl">Drive</h1>
+          <h1 className="mb-4 page-title text-3xl font-bold max-md:text-2xl">Drive</h1>
           <DriveBrowser selectedId={selected?.file.id} onSelect={(file, accountId) => setSelected({ file, accountId })} />
         </div>
         {selected && <FilePanel {...selected} onClose={() => setSelected(null)} />}

@@ -15,7 +15,7 @@ class AppDB extends Dexie {
   meta!: EntityTable<Meta, 'key'>
 
   constructor() {
-    super('espacio')
+    super('onix')
     this.version(1).stores({
       pages: 'id, parent_id, database_id, dirty, updated_at, is_template',
       views: 'id, database_id, dirty',

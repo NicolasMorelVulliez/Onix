@@ -12,6 +12,7 @@ import { SearchPalette } from './components/SearchPalette'
 import { Sidebar } from './components/Sidebar'
 import { TrashView } from './components/TrashView'
 import { startSync } from './lib/sync'
+import { useApplyTheme } from './lib/theme'
 import { auth } from './lib/firebase'
 import { useUI } from './lib/ui-store'
 import { cx } from './lib/util'
@@ -62,6 +63,7 @@ declare module '@tanstack/react-router' {
 }
 
 export function App() {
+  useApplyTheme()
   const [user, setUser] = useState<User | null | undefined>(auth ? undefined : null)
 
   useEffect(() => (auth ? onAuthStateChanged(auth, setUser) : undefined), [])

@@ -2,7 +2,7 @@
  * Shared helpers for the Vercel functions (files starting with "_" aren't routes).
  *
  * Env vars: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, TOKEN_SECRET (32+ random chars),
- * FIREBASE_PROJECT_ID, APP_ORIGINS (comma-separated, e.g. https://espacio.web.app).
+ * FIREBASE_PROJECT_ID, APP_ORIGINS (comma-separated, e.g. https://onix.web.app).
  */
 import { compactDecrypt, CompactEncrypt, createRemoteJWKSet, jwtVerify, SignJWT } from 'jose'
 

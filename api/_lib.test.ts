@@ -3,7 +3,7 @@ import { decryptToken, encryptToken, isAllowedOrigin, signState, verifyState } f
 
 beforeAll(() => {
   process.env.TOKEN_SECRET = 'test-secret-with-at-least-32-chars!!'
-  process.env.APP_ORIGINS = 'https://espacio.web.app'
+  process.env.APP_ORIGINS = 'https://onix.web.app'
 })
 
 describe('api helpers', () => {
@@ -14,13 +14,13 @@ describe('api helpers', () => {
   })
 
   it('rejects tampered state', async () => {
-    const state = await signState({ uid: 'u1', returnTo: 'https://espacio.web.app' })
+    const state = await signState({ uid: 'u1', returnTo: 'https://onix.web.app' })
     expect((await verifyState(state)).uid).toBe('u1')
     await expect(verifyState(state.slice(0, -2) + 'xx')).rejects.toThrow()
   })
 
   it('only allows configured origins and localhost', () => {
-    expect(isAllowedOrigin('https://espacio.web.app')).toBe(true)
+    expect(isAllowedOrigin('https://onix.web.app')).toBe(true)
     expect(isAllowedOrigin('http://localhost:5173')).toBe(true)
     expect(isAllowedOrigin('https://evil.example')).toBe(false)
   })

@@ -57,7 +57,7 @@ export function Popover({
       ref={ref}
       style={{ top: pos?.top ?? -9999, left: pos?.left ?? -9999 }}
       className={cx(
-        'fixed z-50 max-h-[70vh] overflow-auto rounded-lg border border-line bg-bg p-1 text-sm shadow-xl shadow-black/10',
+        'fixed z-50 max-h-[70vh] overflow-auto material pop-in rounded-lg border border-line bg-elevated p-1 text-sm shadow-pop',
         className,
       )}
     >

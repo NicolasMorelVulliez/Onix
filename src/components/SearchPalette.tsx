@@ -49,7 +49,7 @@ export function SearchPalette() {
       onOpenChange={setOpen}
       label="Buscar"
       overlayClassName="fixed inset-0 z-40 bg-black/30"
-      contentClassName="fixed left-1/2 top-[12vh] z-50 w-[36rem] max-w-[calc(100vw-24px)] -translate-x-1/2 overflow-hidden rounded-xl border border-line bg-bg shadow-2xl"
+      contentClassName="fixed left-1/2 top-[12vh] z-50 w-[36rem] max-w-[calc(100vw-24px)] -translate-x-1/2 material pop-in overflow-hidden rounded-xl border border-line bg-elevated shadow-pop"
     >
       <Command.Input
         value={query}

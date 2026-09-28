@@ -5,7 +5,7 @@ import { useUI } from '../lib/ui-store'
 export function TopBar({ children }: { children?: ReactNode }) {
   const setSidebarOpen = useUI((s) => s.setSidebarOpen)
   return (
-    <div className="safe-top sticky top-0 z-20 bg-bg/90 backdrop-blur">
+    <div className="safe-top material sticky top-0 z-20 bg-(--topbar)">
       <div className="flex h-11 items-center gap-2 px-3">
         <button type="button" aria-label="Abrir menú" onClick={() => setSidebarOpen(true)} className="rounded p-1 text-muted hover:bg-hover md:hidden">
           <Menu size={18} />

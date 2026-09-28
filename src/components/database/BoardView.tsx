@@ -91,7 +91,7 @@ export function BoardView({ db, view, rows, onOpenRow }: { db: Page; view: View;
         </div>
         <DragOverlay>
           {dragging && (
-            <div className="rotate-2 rounded-md border border-line bg-bg p-2 shadow-lg">
+            <div className="rotate-2 rounded-md border border-card-line bg-card p-2 shadow-lg">
               <CardBody row={dragging} props={cardProps} />
             </div>
           )}
@@ -142,7 +142,7 @@ function Card({
       {...drag.listeners}
       onClick={onOpen}
       className={cx(
-        'cursor-pointer rounded-md border border-line bg-bg p-2 shadow-sm hover:bg-hover',
+        'cursor-pointer rounded-md border border-card-line bg-card p-2 shadow-sm hover:bg-hover',
         drag.isDragging && 'opacity-30',
         drop.isOver && !drag.isDragging && 'shadow-[0_-2px_0_0_var(--accent)]',
       )}

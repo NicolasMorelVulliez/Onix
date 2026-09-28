@@ -19,7 +19,7 @@ import { createDatabase, createPage, updatePage } from '../lib/pages'
 import { useDrivePicker } from './drive/DrivePicker'
 import type { Page } from '../lib/types'
 import { debounce } from '../lib/util'
-import { useColorScheme } from '../lib/useColorScheme'
+import { useColorScheme } from '../lib/theme'
 
 function customItems(editor: AppEditor, page: Page, open: (id: string) => void): DefaultReactSuggestionItem[] {
   return [

@@ -25,7 +25,7 @@ export function Home() {
     <>
       <TopBar />
       <div className="mx-auto max-w-3xl px-12 pt-12 max-md:px-4">
-        <h1 className="mb-8 text-3xl font-bold">{greeting} 👋</h1>
+        <h1 className="mb-8 page-title text-3xl font-bold">{greeting} 👋</h1>
         <div className="mb-10 flex flex-wrap gap-2 text-sm">
           <button type="button" onClick={async () => open((await createPage()).id)} className="flex items-center gap-1.5 rounded-md border border-line px-3 py-2 hover:bg-hover">
             <Plus size={16} /> Nueva página

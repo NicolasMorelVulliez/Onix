@@ -15,7 +15,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { CATEGORIES, refreshAll, useCalendarStatus } from '../../lib/calendar'
 import { db } from '../../lib/db'
 import type { CalendarEvent, DateValue } from '../../lib/types'
-import { useColorScheme } from '../../lib/useColorScheme'
+import { useColorScheme } from '../../lib/theme'
 import { useUI } from '../../lib/ui-store'
 import { cx } from '../../lib/util'
 import { TopBar } from '../TopBar'
@@ -96,7 +96,7 @@ export function CalendarView() {
       </TopBar>
       <div className="px-8 pb-10 max-md:px-2">
         <div className="mb-3 mt-4 flex flex-wrap items-center gap-2 max-md:px-2">
-          <h1 className="mr-2 text-3xl font-bold max-md:w-full max-md:text-2xl">Calendario</h1>
+          <h1 className="mr-2 page-title text-3xl font-bold max-md:w-full max-md:text-2xl">Calendario</h1>
           <Chip active={hidden.length === 0} onClick={() => setHidden([])}>
             Todo
           </Chip>
@@ -135,7 +135,7 @@ export function CalendarView() {
           </button>
         )}
 
-        <div className="espacio-calendar">
+        <div className="onix-calendar">
           <FullCalendar
             plugins={[classicThemePlugin, dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
             locale={esLocale}

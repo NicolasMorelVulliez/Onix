@@ -1,27 +1,101 @@
 @import 'tailwindcss';
 
-:root {
+/* Dark mode follows the app setting (html[data-mode]), not only the OS. */
+@custom-variant dark (&:where([data-mode='dark'], [data-mode='dark'] *));
+
+/*
+ * Themes: html[data-theme] = notion | apple, html[data-mode] = light | dark.
+ * Every component reads these tokens, so a theme is only a set of values.
+ */
+
+/* ---------- Notion: warm grays, flat surfaces, small radii ---------- */
+:root,
+[data-theme='notion'][data-mode='light'] {
   --bg: #ffffff;
   --fg: #37352f;
   --muted: #787774;
   --border: #e9e9e7;
   --hover: rgba(55, 53, 47, 0.06);
   --sidebar: #f7f7f5;
+  --elevated: #ffffff;
+  --topbar: rgba(255, 255, 255, 0.9);
   --accent: #2383e2;
+  --accent-fg: #ffffff;
+  --selected: rgba(55, 53, 47, 0.08);
+  --selected-fg: var(--fg);
+  --card: var(--bg);
+  --card-border: var(--border);
+  --shadow-pop: 0 0 0 1px rgba(15, 15, 15, 0.05), 0 3px 6px rgba(15, 15, 15, 0.1), 0 9px 24px rgba(15, 15, 15, 0.2);
+  --font: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --title-tracking: -0.01em;
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 8px;
+  --r-xl: 12px;
+  --blur: none;
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #191919;
-    --fg: #e6e6e4;
-    --muted: #9b9b9b;
-    --border: #2f2f2f;
-    --hover: rgba(255, 255, 255, 0.055);
-    --sidebar: #202020;
-    --accent: #529cca;
-    color-scheme: dark;
-  }
+[data-theme='notion'][data-mode='dark'] {
+  --bg: #191919;
+  --fg: #e6e6e4;
+  --muted: #9b9b9b;
+  --border: #2f2f2f;
+  --hover: rgba(255, 255, 255, 0.055);
+  --sidebar: #202020;
+  --elevated: #252525;
+  --topbar: rgba(25, 25, 25, 0.9);
+  --accent: #529cca;
+  --selected: rgba(255, 255, 255, 0.08);
+  --shadow-pop: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 3px 6px rgba(0, 0, 0, 0.4), 0 9px 24px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+
+/* ---------- Apple: system colors, SF type, translucent materials, larger radii ---------- */
+[data-theme='apple'] {
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro', system-ui, 'Helvetica Neue', sans-serif;
+  --title-tracking: -0.022em;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --blur: blur(24px) saturate(180%);
+  --accent-fg: #ffffff;
+  --selected-fg: #ffffff;
+}
+
+[data-theme='apple'][data-mode='light'] {
+  --bg: #ffffff; /* systemBackground */
+  --fg: #000000; /* label */
+  --muted: rgba(60, 60, 67, 0.6); /* secondaryLabel */
+  --border: rgba(60, 60, 67, 0.18); /* separator */
+  --hover: rgba(120, 120, 128, 0.12); /* systemFill */
+  --sidebar: rgba(242, 242, 247, 0.78); /* secondarySystemBackground as material */
+  --elevated: rgba(255, 255, 255, 0.86);
+  --topbar: rgba(255, 255, 255, 0.72);
+  --accent: #007aff; /* systemBlue */
+  --selected: #007aff;
+  --card: #ffffff;
+  --card-border: rgba(0, 0, 0, 0.08);
+  --shadow-pop: 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 10px 30px rgba(0, 0, 0, 0.16);
+  color-scheme: light;
+}
+
+[data-theme='apple'][data-mode='dark'] {
+  --bg: #000000;
+  --fg: #ffffff;
+  --muted: rgba(235, 235, 245, 0.6);
+  --border: rgba(84, 84, 88, 0.6);
+  --hover: rgba(120, 120, 128, 0.24);
+  --sidebar: rgba(28, 28, 30, 0.78); /* secondarySystemBackground #1c1c1e */
+  --elevated: rgba(44, 44, 46, 0.86); /* tertiary #2c2c2e */
+  --topbar: rgba(0, 0, 0, 0.72);
+  --accent: #0a84ff;
+  --selected: #0a84ff;
+  --card: #1c1c1e;
+  --card-border: transparent;
+  --shadow-pop: 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 10px 30px rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -30,9 +104,21 @@
   --color-muted: var(--muted);
   --color-hover: var(--hover);
   --color-sidebar: var(--sidebar);
+  --color-elevated: var(--elevated);
   --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-selected: var(--selected);
+  --color-selected-fg: var(--selected-fg);
   --color-line: var(--border);
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --color-card: var(--card);
+  --color-card-line: var(--card-border);
+  --font-sans: var(--font);
+  --radius: var(--r-sm);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --shadow-pop: var(--shadow-pop);
 }
 
 html,
@@ -49,6 +135,78 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Smooth light/dark switch (no abrupt brightness jump). */
+body,
+.material {
+  transition:
+    background-color 200ms ease,
+    color 200ms ease;
+}
+
+/* Translucent layers (sidebar, top bar, menus): content shows through, blurred. */
+.material {
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+}
+
+.page-title {
+  letter-spacing: var(--title-tracking);
+}
+
+/* Apple: feedback on press, instantly. */
+[data-theme='apple'] button:not(:disabled):active {
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
+}
+[data-theme='apple'] .page-title {
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+/* Menus materialize from their trigger instead of popping in. */
+[data-theme='apple'] .pop-in {
+  animation: pop-in 180ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  transform-origin: top left;
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+    -webkit-backdrop-filter: blur(0);
+    backdrop-filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme='apple'] .pop-in {
+    animation: fade-in 150ms ease;
+  }
+  [data-theme='apple'] button:not(:disabled):active {
+    transform: none;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --blur: none;
+  }
+  [data-theme='apple'][data-mode='light'] {
+    --sidebar: #f2f2f7;
+    --elevated: #ffffff;
+    --topbar: #ffffff;
+  }
+  [data-theme='apple'][data-mode='dark'] {
+    --sidebar: #1c1c1e;
+    --elevated: #2c2c2e;
+    --topbar: #000000;
+  }
+}
+
 /* Editor: blend into the page like Notion. */
 .bn-container[data-color-scheme] {
   --bn-colors-editor-background: var(--bg);
@@ -61,7 +219,7 @@ body {
   gap: 0.6rem;
   width: 100%;
   padding: 0.9rem 1rem;
-  border-radius: 6px;
+  border-radius: var(--r-md);
   background: var(--hover);
 }
 .callout-emoji {
@@ -85,7 +243,7 @@ body {
   align-items: center;
   max-width: 100%;
   padding: 0 6px;
-  border-radius: 4px;
+  border-radius: var(--r-sm);
   font-size: 0.8125rem;
   line-height: 1.35rem;
   white-space: nowrap;
@@ -110,14 +268,15 @@ body {
 }
 
 /* Calendar: follow the app colors (beats the palette's [data-color-scheme] rules). */
-.espacio-calendar,
-.espacio-calendar [data-color-scheme] {
+.onix-calendar,
+.onix-calendar [data-color-scheme] {
   --fc-classic-background: var(--bg);
   --fc-classic-foreground: var(--fg);
   --fc-classic-muted-foreground: var(--muted);
   --fc-classic-border: var(--border);
   --fc-classic-strong-border: var(--border);
-  --fc-classic-today: rgba(35, 131, 226, 0.08);
+  --fc-classic-today: color-mix(in srgb, var(--accent) 9%, transparent);
+  --fc-classic-primary-foreground: var(--accent-fg);
   --fc-classic-button: var(--hover);
   --fc-classic-button-border: var(--border);
   --fc-classic-button-strong: var(--accent);
@@ -125,6 +284,6 @@ body {
   --fc-classic-button-foreground: var(--fg);
   --fc-classic-primary: var(--accent);
 }
-.espacio-calendar {
+.onix-calendar {
   font-size: 0.875rem;
 }

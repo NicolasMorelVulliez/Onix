@@ -24,7 +24,7 @@ export function TrashView() {
         <span className="text-sm">Papelera</span>
       </TopBar>
       <div className="mx-auto max-w-3xl px-12 pt-12 max-md:px-4">
-        <h1 className="mb-6 text-3xl font-bold">Papelera</h1>
+        <h1 className="mb-6 page-title text-3xl font-bold">Papelera</h1>
         {items?.length === 0 && <p className="text-muted">La papelera está vacía.</p>}
         <ul className="divide-y divide-(--border)">
           {items?.map((p) => (

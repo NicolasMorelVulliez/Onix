@@ -64,7 +64,7 @@ export function AccountsPage() {
         <span className="text-sm">Cuentas</span>
       </TopBar>
       <div className="mx-auto max-w-3xl px-12 pb-24 pt-12 max-md:px-4 max-md:pt-6">
-        <h1 className="mb-2 text-3xl font-bold">Cuentas</h1>
+        <h1 className="mb-2 page-title text-3xl font-bold">Cuentas</h1>
         <p className="mb-6 text-sm text-muted">
           Vinculá todas las cuentas de Google que quieras (EGS, personal…) para ver sus calendarios y explorar su Drive.
         </p>
@@ -90,7 +90,7 @@ export function AccountsPage() {
             ))}
           </div>
           <p className="mt-2 text-xs text-muted">
-            Al vincular, Google puede mostrar "Google no verificó esta app": es tu propia app. Tocá Configuración avanzada → Ir a Espacio.
+            Al vincular, Google puede mostrar "Google no verificó esta app": es tu propia app. Tocá Configuración avanzada → Ir a Onix.
             Si en EGS aparece bloqueado, el administrador de Google Workspace tiene que permitir la app.
           </p>
         </section>

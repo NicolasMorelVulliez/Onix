@@ -145,7 +145,7 @@ function Header({ page }: { page: Page }) {
             document.querySelector<HTMLElement>('.bn-editor')?.focus()
           }
         }}
-        className="w-full resize-none overflow-hidden bg-transparent text-4xl font-bold leading-tight outline-none placeholder:text-muted/50 max-md:text-3xl"
+        className="w-full resize-none overflow-hidden bg-transparent page-title text-4xl font-bold leading-tight outline-none placeholder:text-muted/50 max-md:text-3xl"
       />
     </div>
   )

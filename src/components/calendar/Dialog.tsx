@@ -15,7 +15,7 @@ export function Dialog({ title, onClose, children }: { title: ReactNode; onClose
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[80vh] w-[44rem] max-w-full overflow-y-auto rounded-xl border border-line bg-bg p-4 shadow-2xl"
+        className="max-h-[80vh] w-[44rem] max-w-full overflow-y-auto material pop-in rounded-xl border border-line bg-elevated p-4 shadow-pop"
       >
         <div className="mb-3 flex items-start gap-2">
           <h2 className="flex-1 text-lg font-semibold">{title}</h2>

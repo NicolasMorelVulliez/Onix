@@ -1,1 +1,34 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#1f1f1f"/><rect x="136" y="120" width="240" height="272" rx="28" fill="#fafafa"/><rect x="176" y="176" width="160" height="22" rx="11" fill="#1f1f1f"/><rect x="176" y="232" width="120" height="18" rx="9" fill="#9a9a9a"/><rect x="176" y="276" width="140" height="18" rx="9" fill="#9a9a9a"/><rect x="176" y="320" width="96" height="18" rx="9" fill="#9a9a9a"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f7f4ef"/><stop offset="1" stop-color="#e4dfd6"/></linearGradient>
+  <radialGradient id="stone" cx="0.40" cy="0.26" r="0.95">
+    <stop offset="0" stop-color="#4d4d54"/><stop offset="0.3" stop-color="#1f1f24"/><stop offset="0.7" stop-color="#09090b"/><stop offset="1" stop-color="#020203"/>
+  </radialGradient>
+  <radialGradient id="rim" cx="0.5" cy="0.5" r="0.5">
+    <stop offset="0.9" stop-color="#fff" stop-opacity="0"/><stop offset="0.985" stop-color="#fff" stop-opacity="0.18"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="bounce" x1="0" y1="0" x2="0" y2="1"><stop offset="0.6" stop-color="#cdbfa8" stop-opacity="0"/><stop offset="1" stop-color="#cdbfa8" stop-opacity="0.3"/></linearGradient>
+  <linearGradient id="window" x1="0" y1="0" x2="0.6" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.75"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="22"/></filter>
+  <filter id="b1"><feGaussianBlur stdDeviation="1.2"/></filter>
+  <filter id="b3"><feGaussianBlur stdDeviation="3"/></filter>
+  <clipPath id="clip"><ellipse cx="512" cy="500" rx="318" ry="262"/></clipPath>
+</defs>
+<rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
+<ellipse cx="520" cy="770" rx="286" ry="44" fill="#2e271c" opacity="0.42" filter="url(#shadow)"/>
+<ellipse cx="512" cy="500" rx="318" ry="262" fill="url(#stone)"/>
+<g clip-path="url(#clip)">
+  <g fill="none" stroke="#eee6d8" stroke-linecap="round" filter="url(#b1)">
+    <path d="M170 610 C300 540 420 640 560 596 S780 480 880 520" stroke-width="20" opacity="0.92"/>
+    <path d="M170 646 C304 580 428 676 566 634 S784 520 880 560" stroke-width="5" opacity="0.6"/>
+    <path d="M170 668 C308 606 432 700 570 660 S788 548 880 588" stroke-width="2.5" opacity="0.5"/>
+    <path d="M170 700 C312 640 436 730 576 694 S792 584 880 624" stroke-width="10" opacity="0.38"/>
+    <path d="M170 576 C296 506 414 604 552 560 S776 446 880 482" stroke-width="2.5" opacity="0.45"/>
+    <path d="M170 740 C316 684 442 766 582 736 S796 630 880 668" stroke-width="3" opacity="0.25"/>
+  </g>
+  <ellipse cx="512" cy="500" rx="318" ry="262" fill="url(#bounce)"/>
+  <path d="M296 330 C352 262 456 236 560 244 C470 262 392 300 344 370 C326 368 306 352 296 330 Z" fill="url(#window)" opacity="0.6" filter="url(#b3)"/>
+  <ellipse cx="628" cy="300" rx="46" ry="14" fill="#fff" opacity="0.18" transform="rotate(12 628 300)" filter="url(#b3)"/>
+</g>
+<ellipse cx="512" cy="500" rx="318" ry="262" fill="url(#rim)"/>
+</svg>

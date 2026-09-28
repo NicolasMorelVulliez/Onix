@@ -1,4 +1,4 @@
-# Espacio
+# Onix
 
 Notion personal, sin IA: páginas anidadas, editor de bloques con `/`, bases de datos (Tabla y Kanban),
 calendario unificado y Drive, con **todas las cuentas de Google que quieras** (EGS, personal…).
@@ -34,10 +34,10 @@ Sin `.env.local` la app funciona **solo en modo local**. Ver `.env.example`.
 ### 2. Google Cloud (mismo proyecto que Firebase)
 1. <https://console.cloud.google.com> → elegir el proyecto → *APIs y servicios → Biblioteca*:
    habilitar **Google Calendar API** y **Google Drive API**.
-2. *Pantalla de consentimiento de OAuth* → tipo **Externo** → completar nombre (Espacio) y tu email.
+2. *Pantalla de consentimiento de OAuth* → tipo **Externo** → completar nombre (Onix) y tu email.
    Agregar los permisos: `calendar.calendarlist.readonly`, `calendar.events`, `drive.readonly`.
    Después tocar **Publicar app** (estado *En producción*): si queda en *Prueba*, Google corta el acceso cada 7 días.
-   Como la app no está verificada, al vincular vas a ver un aviso: *Configuración avanzada → Ir a Espacio*.
+   Como la app no está verificada, al vincular vas a ver un aviso: *Configuración avanzada → Ir a Onix*.
 3. *Credenciales → Crear credenciales → ID de cliente de OAuth → Aplicación web*. URIs de redireccionamiento:
    - `http://localhost:5173/api/google/callback`
    - `https://TU-APP.vercel.app/api/google/callback`

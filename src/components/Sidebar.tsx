@@ -22,6 +22,7 @@ import { useSyncStatus } from '../lib/sync'
 import type { Page } from '../lib/types'
 import { useUI } from '../lib/ui-store'
 import { cx } from '../lib/util'
+import { AppearanceMenu } from './AppearanceMenu'
 import { IconButton, MenuItem, Popover, usePopover } from './ui'
 
 type DropPos = 'before' | 'inside' | 'after'
@@ -86,10 +87,10 @@ export function Sidebar() {
   }
 
   return (
-    <nav className="safe-top flex h-full w-64 flex-col bg-sidebar text-sm">
+    <nav className="safe-top material flex h-full w-64 flex-col bg-sidebar text-sm">
       <div className="flex items-center gap-2 px-3 py-3 font-semibold">
-        <span className="flex size-5 items-center justify-center rounded bg-fg text-[11px] text-bg">E</span>
-        <span className="flex-1">Espacio</span>
+        <img src="/icon.svg" alt="" className="size-5 rounded-[5px]" />
+        <span className="flex-1">Onix</span>
         <SyncDot />
       </div>
 
@@ -126,6 +127,7 @@ export function Sidebar() {
         <SideButton icon={<Trash2 size={16} />} onClick={() => go('/trash')}>
           Papelera
         </SideButton>
+        <AppearanceMenu />
         {auth && (
           <SideButton icon={<LogOut size={16} />} onClick={() => signOut(auth!)}>
             Cerrar sesión
@@ -215,7 +217,7 @@ function TreeItem({
         style={{ paddingLeft: 4 + depth * 14 }}
         className={cx(
           'group relative flex cursor-pointer items-center gap-1 rounded py-1 pr-1 hover:bg-hover',
-          active && 'bg-hover font-medium',
+          active && 'bg-selected font-medium text-selected-fg [&_.text-muted]:text-current',
           dropPos === 'inside' && 'bg-accent/15 ring-1 ring-accent',
           dragId === page.id && 'opacity-40',
         )}

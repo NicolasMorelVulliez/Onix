@@ -8,10 +8,13 @@ interface UIState {
   searchOpen: boolean
   /** Last selected view per database. */
   activeView: Record<string, string>
+  /** Calendar layers hidden with the filter chips (categories + 'tareas'). */
+  hiddenLayers: string[]
   toggleExpanded: (id: string, value?: boolean) => void
   setSidebarOpen: (v: boolean) => void
   setSearchOpen: (v: boolean) => void
   setActiveView: (dbId: string, viewId: string) => void
+  setHiddenLayers: (layers: string[]) => void
 }
 
 export const useUI = create<UIState>()(
@@ -21,14 +24,16 @@ export const useUI = create<UIState>()(
       sidebarOpen: false,
       searchOpen: false,
       activeView: {},
+      hiddenLayers: [],
       toggleExpanded: (id, value) => set((s) => ({ expanded: { ...s.expanded, [id]: value ?? !s.expanded[id] } })),
       setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
       setSearchOpen: (searchOpen) => set({ searchOpen }),
       setActiveView: (dbId, viewId) => set((s) => ({ activeView: { ...s.activeView, [dbId]: viewId } })),
+      setHiddenLayers: (hiddenLayers) => set({ hiddenLayers }),
     }),
     {
       name: 'espacio-ui',
-      partialize: (s) => ({ expanded: s.expanded, activeView: s.activeView }),
+      partialize: (s) => ({ expanded: s.expanded, activeView: s.activeView, hiddenLayers: s.hiddenLayers }),
     },
   ),
 )

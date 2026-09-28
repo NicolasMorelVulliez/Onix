@@ -108,3 +108,23 @@ body {
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* Calendar: follow the app colors (beats the palette's [data-color-scheme] rules). */
+.espacio-calendar,
+.espacio-calendar [data-color-scheme] {
+  --fc-classic-background: var(--bg);
+  --fc-classic-foreground: var(--fg);
+  --fc-classic-muted-foreground: var(--muted);
+  --fc-classic-border: var(--border);
+  --fc-classic-strong-border: var(--border);
+  --fc-classic-today: rgba(35, 131, 226, 0.08);
+  --fc-classic-button: var(--hover);
+  --fc-classic-button-border: var(--border);
+  --fc-classic-button-strong: var(--accent);
+  --fc-classic-button-strong-border: var(--accent);
+  --fc-classic-button-foreground: var(--fg);
+  --fc-classic-primary: var(--accent);
+}
+.espacio-calendar {
+  font-size: 0.875rem;
+}

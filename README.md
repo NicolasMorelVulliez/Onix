@@ -19,7 +19,7 @@ Sin `.env.local` la app funciona **solo en modo local** (los datos quedan en el 
 ## Conectar Supabase (gratis) — sincroniza compu ↔ celular
 
 1. Crear un proyecto en <https://supabase.com> (plan Free).
-2. **SQL Editor** → ejecutar `supabase/migrations/0001_init.sql` y después `0002_storage.sql`.
+2. **SQL Editor** → ejecutar en orden `0001_init.sql`, `0002_storage.sql` y `0003_calendar_sources.sql` (carpeta `supabase/migrations/`).
 3. **Authentication → Users → Add user**: crear tu usuario con tu email.
 4. **Authentication → Sign In / Providers → Email**: desactivar *Allow new users to sign up*
    (así nadie más puede crear cuenta).
@@ -35,6 +35,19 @@ Sin `.env.local` la app funciona **solo en modo local** (los datos quedan en el 
 3. En *Environment Variables* cargar `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
 4. Deploy. Cada `git push` vuelve a publicar.
 
+## Calendario y cuentas vinculadas
+
+Pestaña **Calendario** (barra lateral) → botón **Cuentas**. Cada calendario se vincula con su
+link iCal privado y se le asigna una categoría: **Laboral (EGS)**, **Personal** o **UADE**.
+Los chips de arriba filtran o juntan las categorías; **Tareas** muestra las filas de tus bases de datos que tienen fecha.
+
+- **EGS / personal (Google):** Configuración → tu calendario → *Integrar el calendario* → *Dirección secreta en formato iCal*.
+- **UADE (Outlook):** Configuración → Calendario → Calendarios compartidos → *Publicar un calendario* → link ICS.
+
+Los eventos se descargan a través de `api/ics.ts` (función gratis de Vercel; en desarrollo la sirve Vite)
+porque el navegador no puede leer esos links directo (CORS). Se actualizan cada 15 min y son de solo lectura;
+la escritura en Google Calendar (two-way) queda para una fase posterior con OAuth.
+
 ## Instalar en el iPhone
 
 Abrir la URL de Vercel en **Safari** → botón Compartir → **Agregar a inicio**.
@@ -47,7 +60,9 @@ src/
   lib/          datos: db.ts (Dexie), sync.ts (Supabase), pages.ts (acciones), query.ts (filtros/orden)
   blocks/       bloques propios del editor: callout, enlace a página, embed
   components/   UI: Sidebar, PageView, Editor, SearchPalette (⌘K), database/ (Tabla, Tablero, propiedades)
+  components/calendar/  pestaña Calendario, diálogo de cuentas
   sw.ts         service worker (offline + push)
+api/ics.ts      función de Vercel que descarga los .ics
 supabase/migrations/   SQL del backend
 ```
 
@@ -59,6 +74,7 @@ supabase/migrations/   SQL del backend
 - [ ] Fase 4: vistas Calendario, Galería y Timeline; Relaciones y Rollups
 - [ ] Fase 5: plantillas y botones de automatización
 - [ ] Fase 6: más embeds (PDF subido, bookmarks) — básico ya disponible con `/embed`
-- [ ] Fase 7: calendario Google (EGS + personal) + ICS de Outlook (UADE), vista "Mi día"
+- [x] Fase 7a: pestaña Calendario, cuentas vinculadas por iCal (Google EGS/personal, Outlook UADE), filtros por categoría, tareas con fecha
+- [ ] Fase 7b: escritura en Google Calendar (OAuth), vista "Mi día" con time-blocking
 - [ ] Fase 8: notificaciones push
 - [ ] Fase 9: pulido

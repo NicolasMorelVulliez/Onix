@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Page, View } from './types'
+import type { CalendarEvent, CalendarSource, Page, View } from './types'
 
 interface Meta {
   key: string
@@ -9,6 +9,8 @@ interface Meta {
 class AppDB extends Dexie {
   pages!: EntityTable<Page, 'id'>
   views!: EntityTable<View, 'id'>
+  calendar_sources!: EntityTable<CalendarSource, 'id'>
+  events!: EntityTable<CalendarEvent, 'id'>
   meta!: EntityTable<Meta, 'key'>
 
   constructor() {
@@ -18,12 +20,16 @@ class AppDB extends Dexie {
       views: 'id, database_id, dirty',
       meta: 'key',
     })
+    this.version(2).stores({
+      calendar_sources: 'id, dirty',
+      events: 'id, source_id, start',
+    })
   }
 }
 
 export const db = new AppDB()
 
-export const SYNCED_TABLES = ['pages', 'views'] as const
+export const SYNCED_TABLES = ['pages', 'views', 'calendar_sources'] as const
 export type SyncedTable = (typeof SYNCED_TABLES)[number]
 
 export async function getMeta(key: string) {

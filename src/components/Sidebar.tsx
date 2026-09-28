@@ -1,5 +1,6 @@
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import {
+  CalendarDays,
   ChevronRight,
   Copy,
   Database,
@@ -91,6 +92,15 @@ export function Sidebar() {
         </SideButton>
         <SideButton icon={<Plus size={16} />} onClick={async () => open((await createPage()).id)}>
           Nueva página
+        </SideButton>
+        <SideButton
+          icon={<CalendarDays size={16} />}
+          onClick={() => {
+            navigate({ to: '/calendar' })
+            setSidebarOpen(false)
+          }}
+        >
+          Calendario
         </SideButton>
       </div>
 

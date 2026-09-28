@@ -100,11 +100,9 @@ export function startSync(uid: string) {
   if (!supabase) return () => {}
   userId = uid
   syncNow()
-  const channel = supabase
-    .channel('changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'pages' }, () => schedulePush())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'views' }, () => schedulePush())
-    .subscribe()
+  const channel = supabase.channel('changes')
+  for (const table of SYNCED_TABLES) channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => schedulePush())
+  channel.subscribe()
   const onOnline = () => syncNow()
   const onVisible = () => document.visibilityState === 'visible' && syncNow()
   window.addEventListener('online', onOnline)

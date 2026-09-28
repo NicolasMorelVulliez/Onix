@@ -89,3 +89,27 @@ export interface View extends Syncable {
   sorts: Sort[]
   hidden: string[]
 }
+
+export type CalendarCategory = 'laboral' | 'personal' | 'uade'
+
+/** A linked calendar (Google, Outlook…) read through its private iCal link. Synced across devices. */
+export interface CalendarSource extends Syncable {
+  name: string
+  url: string
+  category: CalendarCategory
+  color: string
+  enabled: 0 | 1
+}
+
+/** Local cache of events fetched from a CalendarSource (each device fetches its own). */
+export interface CalendarEvent {
+  id: string
+  source_id: string
+  title: string
+  /** yyyy-mm-dd for all-day events, ISO datetime otherwise. */
+  start: string
+  end: string
+  all_day: 0 | 1
+  location: string | null
+  description: string | null
+}

@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js'
 import { createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import { CalendarView } from './components/calendar/CalendarView'
 import { Home } from './components/Home'
 import { Login } from './components/Login'
 import { PageView } from './components/PageView'
@@ -38,7 +39,8 @@ const rootRoute = createRootRoute({ component: Layout })
 const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: Home })
 const pageRoute = createRoute({ getParentRoute: () => rootRoute, path: '/p/$pageId', component: PageRoute })
 const trashRoute = createRoute({ getParentRoute: () => rootRoute, path: '/trash', component: TrashView })
-const routeTree = rootRoute.addChildren([homeRoute, pageRoute, trashRoute])
+const calendarRoute = createRoute({ getParentRoute: () => rootRoute, path: '/calendar', component: CalendarView })
+const routeTree = rootRoute.addChildren([homeRoute, pageRoute, trashRoute, calendarRoute])
 
 function PageRoute() {
   const { pageId } = pageRoute.useParams()

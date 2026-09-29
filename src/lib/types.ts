@@ -135,3 +135,8 @@ export interface CalendarEvent {
   /** Google Meet link, when the event has one. */
   meet_url?: string | null
 }
+
+/** A synced app setting, e.g. id "notifications". */
+export interface AppSetting<T = unknown> extends Syncable {
+  value: T
+}

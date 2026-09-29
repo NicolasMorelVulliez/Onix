@@ -1,6 +1,7 @@
 import { signOut } from 'firebase/auth'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import {
+  Bell,
   CalendarDays,
   ChevronRight,
   Copy,
@@ -57,7 +58,7 @@ export function Sidebar() {
     navigate({ to: '/p/$pageId', params: { pageId: id } })
     setSidebarOpen(false)
   }
-  const go = (to: '/calendar' | '/drive' | '/mail' | '/accounts' | '/trash') => {
+  const go = (to: '/calendar' | '/drive' | '/mail' | '/accounts' | '/notifications' | '/trash') => {
     navigate({ to })
     setSidebarOpen(false)
   }
@@ -127,6 +128,9 @@ export function Sidebar() {
       <div className="safe-bottom border-t border-line px-2 py-2">
         <SideButton icon={<Link2 size={16} />} onClick={() => go('/accounts')}>
           Cuentas
+        </SideButton>
+        <SideButton icon={<Bell size={16} />} onClick={() => go('/notifications')}>
+          Notificaciones
         </SideButton>
         <SideButton icon={<Trash2 size={16} />} onClick={() => go('/trash')}>
           Papelera

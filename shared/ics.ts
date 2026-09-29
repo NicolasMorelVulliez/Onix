@@ -1,5 +1,5 @@
 import ICAL from 'ical.js'
-import type { CalendarEvent } from './types'
+import type { CalendarEvent } from '../src/lib/types.ts'
 
 const MAX_OCCURRENCES = 2000
 

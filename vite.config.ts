@@ -8,7 +8,9 @@ import { VitePWA } from 'vite-plugin-pwa'
 import * as googleCallback from './api/google/callback.js'
 import * as googleStart from './api/google/start.js'
 import * as googleToken from './api/google/token.js'
+import * as cronTick from './api/cron/tick.js'
 import * as ics from './api/ics.js'
+import * as pushTest from './api/push/test.js'
 
 type Handler = (request: Request) => Promise<Response> | Response
 const routes: Record<string, Record<string, Handler | undefined>> = {
@@ -16,6 +18,8 @@ const routes: Record<string, Record<string, Handler | undefined>> = {
   '/api/google/start': googleStart,
   '/api/google/callback': googleCallback,
   '/api/google/token': googleToken,
+  '/api/push/test': pushTest,
+  '/api/cron/tick': cronTick,
 }
 
 /** Serves the Vercel functions in /api during `npm run dev`. */

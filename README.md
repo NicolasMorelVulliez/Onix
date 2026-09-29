@@ -53,8 +53,10 @@ Sin `.env.local` la app funciona **solo en modo local**. Ver `.env.example`.
    `FIREBASE_PROJECT_ID`, `APP_ORIGINS=https://tu-proyecto.web.app`.
 
 ### 4. Publicar en Firebase Hosting
-En `.env.local` (o como variables al compilar): `VITE_API_URL=https://TU-APP.vercel.app` y
-`VITE_FIREBASE_AUTH_DOMAIN=tu-proyecto.web.app`. Poner el id del proyecto en `.firebaserc` y:
+Crear `.env.production.local` (solo se usa al compilar para producción) con
+`VITE_API_URL=https://TU-APP.vercel.app` y `VITE_FIREBASE_AUTH_DOMAIN=tu-proyecto.web.app`.
+En Google Cloud → Clientes, agregar la URI `https://tu-proyecto.web.app/__/auth/handler` al cliente
+*Web client (auto created by Google Service)* (lo usa el login de Firebase). Poner el id del proyecto en `.firebaserc` y:
 
 ```bash
 npx firebase-tools login

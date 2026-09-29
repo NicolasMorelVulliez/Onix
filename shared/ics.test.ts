@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseIcs } from './ics'
+import { parseIcs } from './ics.js'
 
 // Outlook-style file: Windows time zone name, weekly class with one moved and one cancelled occurrence.
 const ICS = `BEGIN:VCALENDAR

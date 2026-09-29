@@ -7,11 +7,13 @@ import { DrivePicker } from './components/drive/DrivePicker'
 import { DriveView } from './components/drive/DriveView'
 import { Home } from './components/Home'
 import { MailView } from './components/mail/MailView'
+import { NotificationsPage } from './components/NotificationsPage'
 import { Login } from './components/Login'
 import { PageView } from './components/PageView'
 import { SearchPalette } from './components/SearchPalette'
 import { Sidebar } from './components/Sidebar'
 import { TrashView } from './components/TrashView'
+import { useTaskSnapshot } from './lib/notifications'
 import { startSync } from './lib/sync'
 import { useApplyTheme } from './lib/theme'
 import { auth } from './lib/firebase'
@@ -49,7 +51,17 @@ const calendarRoute = createRoute({ getParentRoute: () => rootRoute, path: '/cal
 const driveRoute = createRoute({ getParentRoute: () => rootRoute, path: '/drive', component: DriveView })
 const accountsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/accounts', component: AccountsPage })
 const mailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/mail', component: MailView })
-const routeTree = rootRoute.addChildren([homeRoute, pageRoute, trashRoute, calendarRoute, driveRoute, accountsRoute, mailRoute])
+const notificationsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/notifications', component: NotificationsPage })
+const routeTree = rootRoute.addChildren([
+  homeRoute,
+  pageRoute,
+  trashRoute,
+  calendarRoute,
+  driveRoute,
+  accountsRoute,
+  mailRoute,
+  notificationsRoute,
+])
 
 function PageRoute() {
   const { pageId } = pageRoute.useParams()
@@ -72,6 +84,7 @@ export function App() {
 
   const userId = user?.uid
   useEffect(() => (userId ? startSync(userId) : undefined), [userId])
+  useTaskSnapshot(userId)
 
   if (auth && user === undefined) return null
   if (auth && !user) return <Login />

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { addSource, CATEGORIES, refreshSource, removeSource, setGoogleCalendar, updateSource, useCalendarStatus } from '../lib/calendar'
 import { db } from '../lib/db'
 import { auth } from '../lib/firebase'
-import { finishLinkGoogle, listCalendars, setAccountCategory, startLinkGoogle, unlinkGoogle, type GoogleCalendar } from '../lib/google'
+import { finishLinkGoogle, hasGmail, listCalendars, setAccountCategory, startLinkGoogle, unlinkGoogle, type GoogleCalendar } from '../lib/google'
 import type { CalendarCategory, CalendarSource, GoogleAccount } from '../lib/types'
 import { cx } from '../lib/util'
 import { TopBar } from './TopBar'
@@ -66,7 +66,7 @@ export function AccountsPage() {
       <div className="mx-auto max-w-3xl px-12 pb-24 pt-12 max-md:px-4 max-md:pt-6">
         <h1 className="mb-2 page-title text-3xl font-bold">Cuentas</h1>
         <p className="mb-6 text-sm text-muted">
-          Vinculá todas las cuentas de Google que quieras (EGS, personal…) para ver sus calendarios y explorar su Drive.
+          Vinculá todas las cuentas de Google que quieras (EGS, personal…): calendarios, Drive, Gmail y Meet.
         </p>
         {message && <p className="mb-4 rounded-md bg-hover px-3 py-2 text-sm">{message}</p>}
 
@@ -86,7 +86,7 @@ export function AccountsPage() {
           {accounts?.length === 0 && auth && <p className="text-sm text-muted">Todavía no vinculaste cuentas de Google.</p>}
           <div className="space-y-2">
             {accounts?.map((a) => (
-              <AccountCard key={a.id} account={a} defaultOpen={a.id === justLinked} onRelink={link} />
+              <AccountCard key={a.id} account={a} defaultOpen={a.id === justLinked} onRelink={() => startLinkGoogle(a.email)} />
             ))}
           </div>
           <p className="mt-2 text-xs text-muted">
@@ -140,6 +140,16 @@ function AccountCard({ account, defaultOpen, onRelink }: { account: GoogleAccoun
             <span className="block truncate text-xs text-muted">{account.email}</span>
           </span>
         </button>
+        {!account.needs_reauth && !hasGmail(account) && (
+          <button
+            type="button"
+            onClick={() => startLinkGoogle(account.email)}
+            title="Agrega el permiso para leer y enviar mails"
+            className="rounded bg-accent/15 px-2 py-0.5 text-xs text-accent"
+          >
+            Sumar Gmail
+          </button>
+        )}
         {account.needs_reauth ? (
           <button type="button" onClick={onRelink} className="rounded bg-red-500/15 px-2 py-0.5 text-xs text-red-600 dark:text-red-400">
             Volver a vincular

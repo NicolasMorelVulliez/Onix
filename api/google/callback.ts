@@ -31,6 +31,7 @@ export async function GET(request: Request) {
       email: String(profile.email),
       name: String(profile.name ?? profile.email),
       picture: String(profile.picture ?? ''),
+      scopes: String(tokens.scope ?? ''),
       token: await encryptToken({ uid: state.uid, refresh_token: String(tokens.refresh_token) }),
     })
   } catch (e) {

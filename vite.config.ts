@@ -1,7 +1,9 @@
 /// <reference types="vitest/config" />
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { defineConfig, loadEnv, type Plugin } from 'vite'
+import { existsSync, readFileSync } from 'node:fs'
+import { parseEnv } from 'node:util'
+import { defineConfig, type Plugin } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import * as googleCallback from './api/google/callback.js'
 import * as googleStart from './api/google/start.js'
@@ -21,7 +23,10 @@ function devApi(): Plugin {
   return {
     name: 'dev-api',
     configureServer(server) {
-      Object.assign(process.env, loadEnv('development', process.cwd(), ''))
+      // Re-read .env files on every (re)start: Vite's loadEnv keeps stale values already in process.env.
+      for (const file of ['.env', '.env.local']) {
+        if (existsSync(file)) Object.assign(process.env, parseEnv(readFileSync(file, 'utf8')))
+      }
       server.middlewares.use(async (req, res, next) => {
         const url = new URL(req.url ?? '/', `http://${req.headers.host}`)
         const handler = routes[url.pathname]?.[req.method ?? 'GET']

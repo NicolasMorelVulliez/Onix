@@ -24,8 +24,8 @@ async function api<T>(path: string, body: unknown): Promise<T> {
 }
 
 /** Sends the browser to Google's account chooser; it comes back to /accounts. */
-export async function startLinkGoogle() {
-  const { url } = await api<{ url: string }>('/api/google/start', { returnTo: window.location.origin })
+export async function startLinkGoogle(loginHint?: string) {
+  const { url } = await api<{ url: string }>('/api/google/start', { returnTo: window.location.origin, loginHint })
   window.location.href = url
 }
 
@@ -49,6 +49,7 @@ export async function finishLinkGoogle(hash: string): Promise<GoogleAccount | { 
     token: p.get('token')!,
     category: existing?.category ?? 'personal',
     needs_reauth: 0,
+    scopes: p.get('scopes') ?? '',
   }
   await db.google_accounts.put(account)
   tokens.delete(account.id)
@@ -66,6 +67,9 @@ export async function unlinkGoogle(accountId: string) {
   }
   schedulePush()
 }
+
+export const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.modify'
+export const hasGmail = (a: Pick<GoogleAccount, 'scopes'>) => !!a.scopes?.includes(GMAIL_SCOPE)
 
 // ---------- Access tokens and API calls ----------
 
@@ -126,6 +130,7 @@ interface GEvent {
   summary?: string
   location?: string
   description?: string
+  hangoutLink?: string
   start: { date?: string; dateTime?: string }
   end: { date?: string; dateTime?: string }
 }
@@ -158,6 +163,7 @@ export async function fetchGoogleEvents(accountId: string, calendarId: string, s
         all_day: e.start.date ? 1 : 0,
         location: e.location ?? null,
         description: e.description ?? null,
+        meet_url: e.hangoutLink ?? null,
       })
     }
     pageToken = res.nextPageToken

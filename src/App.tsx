@@ -6,6 +6,7 @@ import { CalendarView } from './components/calendar/CalendarView'
 import { DrivePicker } from './components/drive/DrivePicker'
 import { DriveView } from './components/drive/DriveView'
 import { Home } from './components/Home'
+import { MailView } from './components/mail/MailView'
 import { Login } from './components/Login'
 import { PageView } from './components/PageView'
 import { SearchPalette } from './components/SearchPalette'
@@ -47,7 +48,8 @@ const trashRoute = createRoute({ getParentRoute: () => rootRoute, path: '/trash'
 const calendarRoute = createRoute({ getParentRoute: () => rootRoute, path: '/calendar', component: CalendarView })
 const driveRoute = createRoute({ getParentRoute: () => rootRoute, path: '/drive', component: DriveView })
 const accountsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/accounts', component: AccountsPage })
-const routeTree = rootRoute.addChildren([homeRoute, pageRoute, trashRoute, calendarRoute, driveRoute, accountsRoute])
+const mailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/mail', component: MailView })
+const routeTree = rootRoute.addChildren([homeRoute, pageRoute, trashRoute, calendarRoute, driveRoute, accountsRoute, mailRoute])
 
 function PageRoute() {
   const { pageId } = pageRoute.useParams()

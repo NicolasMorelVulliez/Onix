@@ -10,8 +10,9 @@ self.addEventListener('activate', () => self.clients.claim())
 cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST)
 
-// SPA: every navigation is served by index.html so the app opens offline.
-registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html')))
+// SPA: navigations are served by index.html so the app opens offline — except Firebase's
+// own pages (/__/auth/handler finishes the Google sign-in) and the API.
+registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html'), { denylist: [/^\/__\//, /^\/api\//] }))
 
 // Web Push: reminders and the morning summary sent by /api/cron/tick.
 self.addEventListener('push', (event) => {

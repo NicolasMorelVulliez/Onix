@@ -1,5 +1,5 @@
 import { onAuthStateChanged, type User } from 'firebase/auth'
-import { createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router'
+import { createRootRoute, createRoute, createRouter, Navigate, Outlet, RouterProvider } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { AccountsPage } from './components/AccountsPage'
 import { CalendarView } from './components/calendar/CalendarView'
@@ -9,6 +9,7 @@ import { Home } from './components/Home'
 import { MailView } from './components/mail/MailView'
 import { NotificationsPage } from './components/NotificationsPage'
 import { Login } from './components/Login'
+import { Splash } from './components/Splash'
 import { PageView } from './components/PageView'
 import { SearchPalette } from './components/SearchPalette'
 import { Sidebar } from './components/Sidebar'
@@ -43,7 +44,8 @@ function Layout() {
   )
 }
 
-const rootRoute = createRootRoute({ component: Layout })
+// Unknown addresses (old links, leftovers from a sign-in) go home instead of a blank screen.
+const rootRoute = createRootRoute({ component: Layout, notFoundComponent: () => <Navigate to="/" replace /> })
 const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: Home })
 const pageRoute = createRoute({ getParentRoute: () => rootRoute, path: '/p/$pageId', component: PageRoute })
 const trashRoute = createRoute({ getParentRoute: () => rootRoute, path: '/trash', component: TrashView })
@@ -86,7 +88,7 @@ export function App() {
   useEffect(() => (userId ? startSync(userId) : undefined), [userId])
   useTaskSnapshot(userId)
 
-  if (auth && user === undefined) return null
+  if (auth && user === undefined) return <Splash />
   if (auth && !user) return <Login />
   return <RouterProvider router={router} />
 }

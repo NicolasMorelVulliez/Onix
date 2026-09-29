@@ -70,7 +70,11 @@ La app queda en `https://tu-proyecto.web.app`. En el iPhone: Safari → Comparti
 - **Cuentas** (barra lateral): *Vincular cuenta* abre el selector de Google; repetilo para cada cuenta.
   Cada una tiene una categoría (Laboral EGS / Personal / UADE) y elegís qué calendarios mostrar.
   Para Outlook (UADE) se pega el link iCal publicado.
-- **Calendario:** junta todo; los chips filtran por categoría y *Tareas* muestra filas de bases de datos con fecha.
+- **Mi día:** agenda de hoy con tus tareas al lado; arrastrá una tarea al horario (o tocá ⏰ en el celular) para agendarla.
+- **Tareas repetitivas:** en la página de la tarea, *Repetir* (diaria, semanal con días, mensual, anual); al marcarla hecha pasa sola a la próxima fecha.
+- **Importar de Notion:** Inicio → *Importar de Notion* y subí el .zip exportado en formato *Markdown y CSV*.
+- **Siri:** el atajo *Agregar a Onix* (iCloud Drive → Onix) crea tareas dictadas: "comprar yerba mañana a las 10".
+- **Calendario:** junta todo; creá, editá, mové y borrá eventos de Google; los chips filtran por categoría y *Tareas* muestra filas de bases de datos con fecha.
 - **Correo:** bandeja unificada de todas las cuentas: leer, buscar (sintaxis de Gmail), responder, archivar y redactar
   eligiendo desde qué cuenta sale. Las cuentas vinculadas antes de Gmail muestran *Sumar Gmail*.
 - **Meet:** *Nuevo Meet* en el Calendario crea el evento con link de Meet (instantáneo o programado) e invita por mail;

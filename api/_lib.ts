@@ -119,6 +119,8 @@ export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/calendar.calendarlist.readonly',
   'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/drive.readonly',
+  // Read, send, archive and mark mail as read (everything except permanent deletion).
+  'https://www.googleapis.com/auth/gmail.modify',
 ]
 
 export async function googleToken(params: Record<string, string>) {

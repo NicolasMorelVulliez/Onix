@@ -33,9 +33,9 @@ Sin `.env.local` la app funciona **solo en modo local**. Ver `.env.example`.
 
 ### 2. Google Cloud (mismo proyecto que Firebase)
 1. <https://console.cloud.google.com> → elegir el proyecto → *APIs y servicios → Biblioteca*:
-   habilitar **Google Calendar API** y **Google Drive API**.
+   habilitar **Google Calendar API**, **Google Drive API** y **Gmail API**.
 2. *Pantalla de consentimiento de OAuth* → tipo **Externo** → completar nombre (Onix) y tu email.
-   Agregar los permisos: `calendar.calendarlist.readonly`, `calendar.events`, `drive.readonly`.
+   Agregar los permisos: `calendar.calendarlist.readonly`, `calendar.events`, `drive.readonly`, `gmail.modify`.
    Después tocar **Publicar app** (estado *En producción*): si queda en *Prueba*, Google corta el acceso cada 7 días.
    Como la app no está verificada, al vincular vas a ver un aviso: *Configuración avanzada → Ir a Onix*.
 3. *Credenciales → Crear credenciales → ID de cliente de OAuth → Aplicación web*. URIs de redireccionamiento:
@@ -69,6 +69,10 @@ La app queda en `https://tu-proyecto.web.app`. En el iPhone: Safari → Comparti
   Cada una tiene una categoría (Laboral EGS / Personal / UADE) y elegís qué calendarios mostrar.
   Para Outlook (UADE) se pega el link iCal publicado.
 - **Calendario:** junta todo; los chips filtran por categoría y *Tareas* muestra filas de bases de datos con fecha.
+- **Correo:** bandeja unificada de todas las cuentas: leer, buscar (sintaxis de Gmail), responder, archivar y redactar
+  eligiendo desde qué cuenta sale. Las cuentas vinculadas antes de Gmail muestran *Sumar Gmail*.
+- **Meet:** *Nuevo Meet* en el Calendario crea el evento con link de Meet (instantáneo o programado) e invita por mail;
+  los eventos con Meet muestran *Unirse*.
 - **Drive:** explorá *Mi unidad*, *Compartido conmigo* y unidades compartidas de cada cuenta, con búsqueda y
   vista previa. *Vincular a una página* agrega el archivo a una página; en el editor también con `/drive`.
 - Las imágenes pegadas en páginas se guardan comprimidas dentro de la página (el plan gratis no tiene storage);

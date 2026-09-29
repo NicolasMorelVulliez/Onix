@@ -117,6 +117,8 @@ export interface GoogleAccount extends Syncable {
   category: CalendarCategory
   /** Set when Google revoked access and the account must be linked again. */
   needs_reauth?: 0 | 1
+  /** Space-separated OAuth scopes granted (missing on accounts linked before Gmail). */
+  scopes?: string
 }
 
 /** Local cache of events fetched from a CalendarSource (each device fetches its own). */
@@ -130,4 +132,6 @@ export interface CalendarEvent {
   all_day: 0 | 1
   location: string | null
   description: string | null
+  /** Google Meet link, when the event has one. */
+  meet_url?: string | null
 }

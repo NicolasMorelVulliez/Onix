@@ -1,4 +1,4 @@
-import { Clock, MapPin } from 'lucide-react'
+import { Clock, MapPin, Video } from 'lucide-react'
 import { CATEGORIES } from '../../lib/calendar'
 import type { CalendarEvent, CalendarSource } from '../../lib/types'
 import { Dialog } from './Dialog'
@@ -28,6 +28,16 @@ export function EventDialog({ event, source, onClose }: { event: CalendarEvent; 
         <p className="flex items-center gap-2">
           <Clock size={15} className="text-muted" /> {capitalize(formatRange(event))}
         </p>
+        {event.meet_url && (
+          <a
+            href={event.meet_url}
+            target="_blank"
+            rel="noreferrer"
+            className="flex w-fit items-center gap-2 rounded-md bg-accent px-3 py-1.5 font-medium text-accent-fg"
+          >
+            <Video size={15} /> Unirse con Google Meet
+          </a>
+        )}
         {event.location && (
           <p className="flex items-center gap-2">
             <MapPin size={15} className="text-muted" />

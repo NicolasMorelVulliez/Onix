@@ -8,6 +8,7 @@ import {
   FileText,
   HardDrive,
   Link2,
+  Mail,
   LogOut,
   MoreHorizontal,
   Plus,
@@ -56,7 +57,7 @@ export function Sidebar() {
     navigate({ to: '/p/$pageId', params: { pageId: id } })
     setSidebarOpen(false)
   }
-  const go = (to: '/calendar' | '/drive' | '/accounts' | '/trash') => {
+  const go = (to: '/calendar' | '/drive' | '/mail' | '/accounts' | '/trash') => {
     navigate({ to })
     setSidebarOpen(false)
   }
@@ -103,6 +104,9 @@ export function Sidebar() {
         </SideButton>
         <SideButton icon={<CalendarDays size={16} />} onClick={() => go('/calendar')}>
           Calendario
+        </SideButton>
+        <SideButton icon={<Mail size={16} />} onClick={() => go('/mail')}>
+          Correo
         </SideButton>
         <SideButton icon={<HardDrive size={16} />} onClick={() => go('/drive')}>
           Drive

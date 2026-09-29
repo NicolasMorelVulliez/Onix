@@ -10,7 +10,7 @@ import '@fullcalendar/react/themes/classic/theme.css'
 import timeGridPlugin from '@fullcalendar/react/timegrid'
 import { useNavigate } from '@tanstack/react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Link2, RefreshCw } from 'lucide-react'
+import { Link2, RefreshCw, Video } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { CATEGORIES, refreshAll, useCalendarStatus } from '../../lib/calendar'
 import { db } from '../../lib/db'
@@ -20,6 +20,7 @@ import { useUI } from '../../lib/ui-store'
 import { cx } from '../../lib/util'
 import { TopBar } from '../TopBar'
 import { EventDialog } from './EventDialog'
+import { MeetDialog } from './MeetDialog'
 
 const TASKS = { id: 'tareas', label: 'Tareas', color: '#787774' }
 const LAYERS = [...CATEGORIES, TASKS]
@@ -53,6 +54,8 @@ export function CalendarView() {
   const hidden = useUI((s) => s.hiddenLayers)
   const setHidden = useUI((s) => s.setHiddenLayers)
   const [selected, setSelected] = useState<CalendarEvent | null>(null)
+  const [meetOpen, setMeetOpen] = useState(false)
+  const accounts = useLiveQuery(() => db.google_accounts.filter((a) => !a.deleted_at).toArray(), [])
   const status = useCalendarStatus()
   const loading = Object.values(status).some((s) => s.loading)
 
@@ -114,6 +117,15 @@ export function CalendarView() {
             >
               <RefreshCw size={16} className={cx(loading && 'animate-spin')} />
             </button>
+            {!!accounts?.length && (
+              <button
+                type="button"
+                onClick={() => setMeetOpen(true)}
+                className="flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1 text-sm font-medium text-accent-fg"
+              >
+                <Video size={14} /> Nuevo Meet
+              </button>
+            )}
             <button
               type="button"
               onClick={() => navigate({ to: '/accounts' })}
@@ -160,6 +172,7 @@ export function CalendarView() {
           />
         </div>
       </div>
+      {meetOpen && accounts && <MeetDialog accounts={accounts} onClose={() => setMeetOpen(false)} />}
       {selected && <EventDialog event={selected} source={sources?.find((s) => s.id === selected.source_id)} onClose={() => setSelected(null)} />}
     </>
   )

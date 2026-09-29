@@ -1,6 +1,6 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Database, FileText, Plus } from 'lucide-react'
+import { Database, FileDown, FileText, Plus } from 'lucide-react'
 import { db } from '../lib/db'
 import { createDatabase, createPage } from '../lib/pages'
 import { TopBar } from './TopBar'
@@ -32,6 +32,9 @@ export function Home() {
           </button>
           <button type="button" onClick={async () => open((await createDatabase()).id)} className="flex items-center gap-1.5 rounded-md border border-line px-3 py-2 hover:bg-hover">
             <Database size={16} /> Nueva base de datos
+          </button>
+          <button type="button" onClick={() => navigate({ to: '/import' })} className="flex items-center gap-1.5 rounded-md border border-line px-3 py-2 hover:bg-hover">
+            <FileDown size={16} /> Importar de Notion
           </button>
         </div>
         {!!recent?.length && (

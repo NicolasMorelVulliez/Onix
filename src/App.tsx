@@ -6,6 +6,7 @@ import { CalendarView } from './components/calendar/CalendarView'
 import { DrivePicker } from './components/drive/DrivePicker'
 import { DriveView } from './components/drive/DriveView'
 import { Home } from './components/Home'
+import { ImportPage } from './components/ImportPage'
 import { MailView } from './components/mail/MailView'
 import { NotificationsPage } from './components/NotificationsPage'
 import { Login } from './components/Login'
@@ -56,8 +57,10 @@ const accountsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/acc
 const mailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/mail', component: MailView })
 const notificationsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/notifications', component: NotificationsPage })
 const todayRoute = createRoute({ getParentRoute: () => rootRoute, path: '/today', component: TodayView })
+const importRoute = createRoute({ getParentRoute: () => rootRoute, path: '/import', component: ImportPage })
 const routeTree = rootRoute.addChildren([
   homeRoute,
+  importRoute,
   todayRoute,
   pageRoute,
   trashRoute,

@@ -1,6 +1,8 @@
 import { db } from './db'
 import { bySortKey, keyAfter, keyBetween, now, uid } from './util'
-import type { Page, Property, PropValue, View } from './types'
+import type { DateValue, Page, Property, PropValue, View } from './types'
+import { combine, dayOf, hm, isTimed, todayYmd } from './dates'
+import { isDoneOption, nextOccurrence } from './repeat'
 import { schedulePush } from './sync'
 
 function base() {
@@ -45,7 +47,27 @@ export async function updatePage(id: string, changes: Partial<Page>) {
 export async function setRowProp(id: string, propId: string, value: PropValue) {
   const page = await db.pages.get(id)
   if (!page) return
-  await updatePage(id, { props: { ...page.props, [propId]: value } })
+  const props = { ...page.props, [propId]: value }
+  const database = page.repeat && page.database_id ? await db.pages.get(page.database_id) : undefined
+  const prop = database?.schema?.find((p) => p.id === propId)
+  const dateProp = database?.schema?.find((p) => p.type === 'date')
+  const completing = prop && ((prop.type === 'checkbox' && value === true) || (prop.options && isDoneOption(prop, value)))
+  // Recurring task marked done: move it to its next date and leave it pending.
+  if (page.repeat && completing && dateProp) {
+    const current = (props[dateProp.id] as DateValue | null) ?? null
+    const next = nextOccurrence(current?.start ? dayOf(current.start) : todayYmd(), page.repeat, todayYmd())
+    props[dateProp.id] = moveToDay(current, next)
+    props[propId] = prop.type === 'checkbox' ? false : (prop.options?.find((o) => !isDoneOption(prop, o.id))?.id ?? null)
+  }
+  await updatePage(id, { props })
+}
+
+/** Same time and duration, another day. */
+function moveToDay(v: DateValue | null, day: string): DateValue {
+  if (!v?.start || !isTimed(v.start)) return { start: day }
+  const start = combine(day, hm(new Date(v.start)))
+  const end = v.end && isTimed(v.end) ? new Date(new Date(start).getTime() + new Date(v.end).getTime() - new Date(v.start).getTime()).toISOString() : undefined
+  return end ? { start, end } : { start }
 }
 
 /** Collects the page and all its descendants (children and database rows). */

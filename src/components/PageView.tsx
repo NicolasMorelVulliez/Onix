@@ -7,6 +7,8 @@ import type { Page } from '../lib/types'
 import { AddPropertyButton, PropertyHeader } from './database/properties'
 import { DatabaseView } from './database/DatabaseView'
 import { PropertyValue } from './database/PropertyValue'
+import { RepeatValue } from './database/RepeatValue'
+import { Repeat } from 'lucide-react'
 import { Editor } from './Editor'
 import { TopBar } from './TopBar'
 import { EmojiPicker, Popover, usePopover } from './ui'
@@ -167,6 +169,14 @@ function RowProperties({ row }: { row: Page }) {
           </div>
         </div>
       ))}
+      {schema.some((p) => p.type === 'date') && (
+        <div className="grid grid-cols-[10rem_1fr] items-center rounded hover:bg-hover max-md:grid-cols-[8rem_1fr]">
+          <div className="flex h-8 items-center gap-1.5 px-2 text-muted">
+            <Repeat size={14} /> Repetir
+          </div>
+          <RepeatValue row={row} />
+        </div>
+      )}
       <AddPropertyButton databaseId={database.id} className="mt-1 flex items-center gap-1 rounded px-2 py-1 text-muted hover:bg-hover" />
     </div>
   )

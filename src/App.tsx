@@ -13,6 +13,7 @@ import { Splash } from './components/Splash'
 import { PageView } from './components/PageView'
 import { SearchPalette } from './components/SearchPalette'
 import { Sidebar } from './components/Sidebar'
+import { TodayView } from './components/today/TodayView'
 import { TrashView } from './components/TrashView'
 import { useTaskSnapshot } from './lib/notifications'
 import { startSync } from './lib/sync'
@@ -54,8 +55,10 @@ const driveRoute = createRoute({ getParentRoute: () => rootRoute, path: '/drive'
 const accountsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/accounts', component: AccountsPage })
 const mailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/mail', component: MailView })
 const notificationsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/notifications', component: NotificationsPage })
+const todayRoute = createRoute({ getParentRoute: () => rootRoute, path: '/today', component: TodayView })
 const routeTree = rootRoute.addChildren([
   homeRoute,
+  todayRoute,
   pageRoute,
   trashRoute,
   calendarRoute,

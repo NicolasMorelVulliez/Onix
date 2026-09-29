@@ -103,7 +103,7 @@ export async function gfetch<T>(accountId: string, url: string, init: RequestIni
     const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
     throw new Error(body.error?.message ?? `Google respondió ${res.status}`)
   }
-  return res.json() as Promise<T>
+  return (res.status === 204 ? null : res.json()) as Promise<T>
 }
 
 // ---------- Calendar ----------

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from '@tanstack/react-router'
 import {
   Bell,
   CalendarDays,
+  CalendarCheck,
   ChevronRight,
   Copy,
   Database,
@@ -58,7 +59,7 @@ export function Sidebar() {
     navigate({ to: '/p/$pageId', params: { pageId: id } })
     setSidebarOpen(false)
   }
-  const go = (to: '/calendar' | '/drive' | '/mail' | '/accounts' | '/notifications' | '/trash') => {
+  const go = (to: '/today' | '/calendar' | '/drive' | '/mail' | '/accounts' | '/notifications' | '/trash') => {
     navigate({ to })
     setSidebarOpen(false)
   }
@@ -102,6 +103,9 @@ export function Sidebar() {
         </SideButton>
         <SideButton icon={<Plus size={16} />} onClick={async () => open((await createPage()).id)}>
           Nueva página
+        </SideButton>
+        <SideButton icon={<CalendarCheck size={16} />} onClick={() => go('/today')}>
+          Mi día
         </SideButton>
         <SideButton icon={<CalendarDays size={16} />} onClick={() => go('/calendar')}>
           Calendario

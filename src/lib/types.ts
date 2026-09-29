@@ -61,6 +61,16 @@ export interface Page extends Syncable {
   /** Only for database rows: propertyId -> value. */
   props: Record<string, PropValue>
   is_template: 0 | 1
+  /** Recurring task: when marked done, its date moves to the next occurrence. */
+  repeat?: RepeatRule | null
+}
+
+export interface RepeatRule {
+  freq: 'daily' | 'weekly' | 'monthly' | 'yearly'
+  /** Every N days/weeks/months/years. */
+  interval: number
+  /** Weekly only: 0 = Sunday … 6 = Saturday. */
+  weekdays?: number[]
 }
 
 export type ViewType = 'table' | 'board'

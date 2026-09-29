@@ -10,7 +10,7 @@ import '@fullcalendar/react/themes/classic/theme.css'
 import timeGridPlugin from '@fullcalendar/react/timegrid'
 import { useNavigate } from '@tanstack/react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Link2, RefreshCw, Video } from 'lucide-react'
+import { CalendarPlus, Link2, RefreshCw, Video } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { CATEGORIES, refreshAll, useCalendarStatus } from '../../lib/calendar'
 import { db } from '../../lib/db'
@@ -21,6 +21,11 @@ import { cx } from '../../lib/util'
 import { TopBar } from '../TopBar'
 import { EventDialog } from './EventDialog'
 import { MeetDialog } from './MeetDialog'
+import { draftForSlot, EventEditor } from './EventEditor'
+import { deleteEvent, moveEvent } from '../../lib/gcal'
+import { setRowProp } from '../../lib/pages'
+import { ymd } from '../../lib/dates'
+import type { EventDraft } from '../../lib/gcal'
 
 const TASKS = { id: 'tareas', label: 'Tareas', color: '#787774' }
 const LAYERS = [...CATEGORIES, TASKS]
@@ -55,6 +60,7 @@ export function CalendarView() {
   const setHidden = useUI((s) => s.setHiddenLayers)
   const [selected, setSelected] = useState<CalendarEvent | null>(null)
   const [meetOpen, setMeetOpen] = useState(false)
+  const [editor, setEditor] = useState<{ event?: CalendarEvent; initial?: Omit<EventDraft, 'sourceId'> } | null>(null)
   const accounts = useLiveQuery(() => db.google_accounts.filter((a) => !a.deleted_at).toArray(), [])
   const status = useCalendarStatus()
   const loading = Object.values(status).some((s) => s.loading)
@@ -74,7 +80,18 @@ export function CalendarView() {
     const external = (events ?? []).flatMap((e) => {
       const s = byId.get(e.source_id)
       if (!s || hidden.includes(s.category)) return []
-      return [{ id: e.id, title: e.title, start: e.start, end: e.end, allDay: !!e.all_day, color: s.color, extendedProps: { event: e } }]
+      return [
+        {
+          id: e.id,
+          title: e.title,
+          start: e.start,
+          end: e.end,
+          allDay: !!e.all_day,
+          color: s.color,
+          editable: s.provider === 'google',
+          extendedProps: { event: e },
+        },
+      ]
     })
     const own = hidden.includes(TASKS.id)
       ? []
@@ -85,10 +102,31 @@ export function CalendarView() {
           end: t.end,
           allDay: t.start.length === 10,
           color: TASKS.color,
+          editable: true,
           extendedProps: { pageId: t.id },
         }))
     return [...external, ...own]
   }, [events, sources, tasks, hidden])
+
+  /** Drag & drop / resize: moves Google events and task dates. */
+  const onMove = async (ev: { start: Date | null; end: Date | null; allDay: boolean; extendedProps: Record<string, unknown> }, revert: () => void) => {
+    const start = ev.start!
+    const end = ev.end ?? new Date(start.getTime() + (ev.allDay ? 86_400_000 : 3_600_000))
+    try {
+      const { event, pageId } = ev.extendedProps as { event?: CalendarEvent; pageId?: string }
+      if (event) await moveEvent(event, start, end, ev.allDay)
+      else if (pageId) {
+        const page = await db.pages.get(pageId)
+        const database = page?.database_id ? await db.pages.get(page.database_id) : undefined
+        const prop = database?.schema?.find((p) => p.type === 'date')
+        if (!prop) return revert()
+        await setRowProp(pageId, prop.id, ev.allDay ? { start: ymd(start) } : { start: start.toISOString(), end: end.toISOString() })
+      }
+    } catch (e) {
+      revert()
+      alert(e instanceof Error ? e.message : String(e))
+    }
+  }
 
   const toggle = (id: string) => setHidden(hidden.includes(id) ? hidden.filter((h) => h !== id) : [...hidden, id])
 
@@ -117,6 +155,15 @@ export function CalendarView() {
             >
               <RefreshCw size={16} className={cx(loading && 'animate-spin')} />
             </button>
+            {!!accounts?.length && (
+              <button
+                type="button"
+                onClick={() => setEditor({ initial: draftForSlot() })}
+                className="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-sm hover:bg-hover"
+              >
+                <CalendarPlus size={14} /> Nuevo evento
+              </button>
+            )}
             {!!accounts?.length && (
               <button
                 type="button"
@@ -164,6 +211,10 @@ export function CalendarView() {
             slotMinTime="07:00:00"
             scrollTime="08:00:00"
             events={fcEvents}
+            selectable={!!accounts?.length}
+            select={(info) => setEditor({ initial: draftForSlot(info.start, info.end, info.allDay) })}
+            eventDrop={(info) => onMove(info.event, info.revert)}
+            eventResize={(info) => onMove(info.event, info.revert)}
             eventClick={(info) => {
               const { pageId, event } = info.event.extendedProps as { pageId?: string; event?: CalendarEvent }
               if (pageId) navigate({ to: '/p/$pageId', params: { pageId } })
@@ -173,7 +224,17 @@ export function CalendarView() {
         </div>
       </div>
       {meetOpen && accounts && <MeetDialog accounts={accounts} onClose={() => setMeetOpen(false)} />}
-      {selected && <EventDialog event={selected} source={sources?.find((s) => s.id === selected.source_id)} onClose={() => setSelected(null)} />}
+      {selected && (
+        <EventDialog
+          event={selected}
+          source={sources?.find((s) => s.id === selected.source_id)}
+          onClose={() => setSelected(null)}
+          {...(sources?.find((s) => s.id === selected.source_id)?.provider === 'google'
+            ? { onEdit: () => (setEditor({ event: selected }), setSelected(null)), onDelete: () => deleteEvent(selected) }
+            : {})}
+        />
+      )}
+      {editor && <EventEditor event={editor.event} initial={editor.initial} onClose={() => setEditor(null)} />}
     </>
   )
 }

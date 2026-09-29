@@ -1,4 +1,5 @@
-import { Clock, MapPin, Video } from 'lucide-react'
+import { Clock, Loader2, MapPin, Pencil, Trash2, Video } from 'lucide-react'
+import { useState } from 'react'
 import { CATEGORIES } from '../../lib/calendar'
 import type { CalendarEvent, CalendarSource } from '../../lib/types'
 import { Dialog } from './Dialog'
@@ -20,8 +21,23 @@ function formatRange(e: CalendarEvent) {
   return `${day} · ${time(s)} – ${time(end)}`
 }
 
-export function EventDialog({ event, source, onClose }: { event: CalendarEvent; source?: CalendarSource; onClose: () => void }) {
+export function EventDialog({
+  event,
+  source,
+  onClose,
+  onEdit,
+  onDelete,
+}: {
+  event: CalendarEvent
+  source?: CalendarSource
+  onClose: () => void
+  /** Only Google events can be changed from Onix. */
+  onEdit?: () => void
+  onDelete?: () => Promise<void>
+}) {
   const category = CATEGORIES.find((c) => c.id === source?.category)
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   return (
     <Dialog title={event.title} onClose={onClose}>
       <div className="space-y-2 text-sm">
@@ -57,6 +73,36 @@ export function EventDialog({ event, source, onClose }: { event: CalendarEvent; 
           </p>
         )}
         {event.description && <p className="whitespace-pre-wrap border-t border-line pt-2 text-muted">{event.description}</p>}
+        {error && <p className="text-red-600 dark:text-red-400">{error}</p>}
+        {(onEdit || onDelete) && (
+          <div className="flex gap-2 border-t border-line pt-3">
+            {onEdit && (
+              <button type="button" onClick={onEdit} className="flex items-center gap-1 rounded-md border border-line px-2.5 py-1 hover:bg-hover">
+                <Pencil size={14} /> Editar
+              </button>
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={async () => {
+                  if (!confirm(`¿Eliminar "${event.title}"? Si tiene invitados, les llega el aviso.`)) return
+                  setDeleting(true)
+                  try {
+                    await onDelete()
+                    onClose()
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : String(e))
+                    setDeleting(false)
+                  }
+                }}
+                className="flex items-center gap-1 rounded-md border border-line px-2.5 py-1 text-red-600 hover:bg-hover dark:text-red-400"
+              >
+                {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />} Eliminar
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </Dialog>
   )

@@ -2,6 +2,7 @@ import { Check, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { updateSchema } from '../../lib/pages'
 import type { DateValue, OptionColor, Property, PropValue, SelectOption } from '../../lib/types'
+import { combine, dayOf, hm, isTimed } from '../../lib/dates'
 import { cx, uid } from '../../lib/util'
 import { Popover, usePopover } from '../ui'
 
@@ -14,9 +15,10 @@ export function OptionTag({ option }: { option?: SelectOption }) {
 
 export function formatDate(v: DateValue | null | undefined) {
   if (!v?.start) return ''
-  const fmt = (s: string) =>
-    new Date(s.length === 10 ? `${s}T00:00` : s).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })
-  return v.end ? `${fmt(v.start)} → ${fmt(v.end)}` : fmt(v.start)
+  const day = (x: string) => new Date(`${dayOf(x)}T12:00`).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })
+  const at = (x: string) => (isTimed(x) ? ` ${hm(new Date(x))}` : '')
+  if (v.end && dayOf(v.end) === dayOf(v.start)) return `${day(v.start)}${at(v.start)}–${hm(new Date(v.end))}`
+  return v.end ? `${day(v.start)}${at(v.start)} → ${day(v.end)}` : `${day(v.start)}${at(v.start)}`
 }
 
 /** Read-only rendering (board cards). */
@@ -103,13 +105,29 @@ function TextInput({ prop, value, onChange }: { prop: Property; value: PropValue
 }
 
 function DateInput({ value, onChange }: { value: DateValue | null; onChange: (v: PropValue) => void }) {
+  const start = value?.start ?? ''
+  const date = start ? dayOf(start) : ''
+  const time = start && isTimed(start) ? hm(new Date(start)) : ''
+  const minutes = value?.end && isTimed(value.end) && isTimed(start) ? new Date(value.end).getTime() - new Date(start).getTime() : null
+  const set = (d: string, t: string) => {
+    if (!d) return onChange(null)
+    if (!t) return onChange({ start: d })
+    const s = combine(d, t)
+    onChange(minutes ? { start: s, end: new Date(new Date(s).getTime() + minutes).toISOString() } : { start: s })
+  }
   return (
-    <input
-      type="date"
-      value={value?.start?.slice(0, 10) ?? ''}
-      onChange={(e) => onChange(e.target.value ? { ...value, start: e.target.value } : null)}
-      className="h-full w-full min-w-0 bg-transparent px-2 py-1 text-sm outline-none"
-    />
+    <div className="flex h-full items-center gap-1 px-1">
+      <input type="date" value={date} onChange={(e) => set(e.target.value, time)} className="min-w-0 flex-1 bg-transparent px-1 py-1 text-sm outline-none" />
+      {date && (
+        <input
+          type="time"
+          value={time}
+          title="Hora (opcional)"
+          onChange={(e) => set(date, e.target.value)}
+          className={cx('w-[7rem] bg-transparent px-1 py-1 text-sm outline-none', !time && 'text-muted')}
+        />
+      )}
+    </div>
   )
 }
 

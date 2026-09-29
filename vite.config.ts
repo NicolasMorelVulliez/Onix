@@ -11,6 +11,7 @@ import * as googleToken from './api/google/token.js'
 import * as cronTick from './api/cron/tick.js'
 import * as ics from './api/ics.js'
 import * as pushTest from './api/push/test.js'
+import * as quickAdd from './api/quick-add.js'
 
 type Handler = (request: Request) => Promise<Response> | Response
 const routes: Record<string, Record<string, Handler | undefined>> = {
@@ -20,6 +21,7 @@ const routes: Record<string, Record<string, Handler | undefined>> = {
   '/api/google/token': googleToken,
   '/api/push/test': pushTest,
   '/api/cron/tick': cronTick,
+  '/api/quick-add': quickAdd,
 }
 
 /** Serves the Vercel functions in /api during `npm run dev`. */

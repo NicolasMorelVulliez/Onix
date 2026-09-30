@@ -95,8 +95,11 @@ La app queda en `https://tu-proyecto.web.app`. En el iPhone: Safari → Comparti
 - Las imágenes pegadas en páginas se guardan comprimidas dentro de la página (el plan gratis no tiene storage);
   PDFs y otros archivos van en Drive y se vinculan.
 
-**Seguridad:** el permiso permanente de cada cuenta (refresh token) se cifra en Vercel y solo Vercel puede usarlo;
-el navegador recibe tokens de 1 hora. Firestore solo deja leer y escribir tus propios datos (`firestore.rules`).
+**Seguridad:** Onix es privado. Solo entra la cuenta dueña (`shared/access.ts`) y las cuentas de Google que el dueño
+agrega en *Cuentas → Quién puede entrar*; cualquier otra ve "Esta cuenta no tiene acceso". Lo hacen cumplir las
+reglas de Firestore (`firestore.rules`: solo el espacio del dueño, solo esas cuentas) y todas las funciones de `/api`,
+no solo la pantalla. El permiso permanente de cada cuenta vinculada (refresh token) se cifra en Vercel y solo Vercel
+puede usarlo; el navegador recibe tokens de 1 hora.
 
 ## Estructura
 

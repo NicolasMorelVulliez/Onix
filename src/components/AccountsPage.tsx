@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { addSource, CATEGORIES, refreshSource, removeSource, setGoogleCalendar, updateSource, useCalendarStatus } from '../lib/calendar'
 import { db } from '../lib/db'
 import { auth } from '../lib/firebase'
-import { finishLinkGoogle, hasGmail, listCalendars, setAccountCategory, startLinkGoogle, unlinkGoogle, type GoogleCalendar } from '../lib/google'
+import { finishLinkGoogle, hasDriveWrite, hasGmail, listCalendars, setAccountCategory, startLinkGoogle, unlinkGoogle, type GoogleCalendar } from '../lib/google'
 import type { CalendarCategory, CalendarSource, GoogleAccount } from '../lib/types'
 import { cx } from '../lib/util'
 import { TopBar } from './TopBar'
@@ -140,6 +140,16 @@ function AccountCard({ account, defaultOpen, onRelink }: { account: GoogleAccoun
             <span className="block truncate text-xs text-muted">{account.email}</span>
           </span>
         </button>
+        {!account.needs_reauth && hasGmail(account) && !hasDriveWrite(account) && (
+          <button
+            type="button"
+            onClick={() => startLinkGoogle(account.email)}
+            title="Permite crear las carpetas de materias y clases"
+            className="rounded bg-accent/15 px-2 py-0.5 text-xs text-accent"
+          >
+            Actualizar permisos de Drive
+          </button>
+        )}
         {!account.needs_reauth && !hasGmail(account) && (
           <button
             type="button"

@@ -21,6 +21,8 @@ import { cx } from '../../lib/util'
 import { TopBar } from '../TopBar'
 import { EventDialog } from './EventDialog'
 import { MeetDialog } from './MeetDialog'
+import { ClassDialog } from './ClassDialog'
+import { useClassEvents, type ClassEvent } from '../../lib/classes'
 import { draftForSlot, EventEditor } from './EventEditor'
 import { deleteEvent, moveEvent } from '../../lib/gcal'
 import { setRowProp } from '../../lib/pages'
@@ -34,7 +36,7 @@ const isMobile = () => window.matchMedia('(max-width: 767px)').matches
 /** Rows of any database that have a date: they show up as tasks in the calendar. */
 function useTasks() {
   return useLiveQuery(async () => {
-    const dbs = await db.pages.filter((p) => p.kind === 'database' && !p.deleted_at && !p.purged).toArray()
+    const dbs = await db.pages.filter((p) => p.kind === 'database' && !p.calendar_category && !p.deleted_at && !p.purged).toArray()
     const dateProp = new Map<string, string>()
     for (const d of dbs) {
       const prop = d.schema?.find((p) => p.type === 'date')
@@ -68,6 +70,8 @@ export function CalendarView() {
   const sources = useLiveQuery(() => db.calendar_sources.filter((s) => !s.deleted_at && !!s.enabled).toArray(), [])
   const events = useLiveQuery(() => db.events.toArray(), [])
   const tasks = useTasks()
+  const classes = useClassEvents()
+  const [selectedClass, setSelectedClass] = useState<ClassEvent | null>(null)
 
   useEffect(() => {
     refreshAll()
@@ -105,8 +109,20 @@ export function CalendarView() {
           editable: true,
           extendedProps: { pageId: t.id },
         }))
-    return [...external, ...own]
-  }, [events, sources, tasks, hidden])
+    const classEvents = (classes ?? [])
+      .filter((c) => !hidden.includes(c.category))
+      .map((c) => ({
+        id: c.page.id,
+        title: c.subject ? `${c.subject.title} · ${c.page.title}` : c.page.title,
+        start: c.start,
+        end: c.end,
+        allDay: c.start.length === 10,
+        color: CATEGORIES.find((x) => x.id === c.category)?.color,
+        editable: true,
+        extendedProps: { pageId: c.page.id, classEv: c },
+      }))
+    return [...external, ...own, ...classEvents]
+  }, [events, sources, tasks, classes, hidden])
 
   /** Drag & drop / resize: moves Google events and task dates. */
   const onMove = async (ev: { start: Date | null; end: Date | null; allDay: boolean; extendedProps: Record<string, unknown> }, revert: () => void) => {
@@ -216,8 +232,9 @@ export function CalendarView() {
             eventDrop={(info) => onMove(info.event, info.revert)}
             eventResize={(info) => onMove(info.event, info.revert)}
             eventClick={(info) => {
-              const { pageId, event } = info.event.extendedProps as { pageId?: string; event?: CalendarEvent }
-              if (pageId) navigate({ to: '/p/$pageId', params: { pageId } })
+              const { pageId, event, classEv } = info.event.extendedProps as { pageId?: string; event?: CalendarEvent; classEv?: ClassEvent }
+              if (classEv) setSelectedClass(classEv)
+              else if (pageId) navigate({ to: '/p/$pageId', params: { pageId } })
               else if (event) setSelected(event)
             }}
           />
@@ -234,6 +251,7 @@ export function CalendarView() {
             : {})}
         />
       )}
+      {selectedClass && <ClassDialog ev={selectedClass} onClose={() => setSelectedClass(null)} />}
       {editor && <EventEditor event={editor.event} initial={editor.initial} onClose={() => setEditor(null)} />}
     </>
   )

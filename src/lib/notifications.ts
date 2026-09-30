@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { deleteDoc, doc, setDoc } from 'firebase/firestore'
 import { useEffect } from 'react'
 import { DEFAULT_SETTINGS, type AgendaItem, type NotifySettings } from '../../shared/notify'
+import { loadClassEvents } from './classes'
 import { db } from './db'
 import { API_URL, auth, firestore } from './firebase'
 import { schedulePush } from './sync'
@@ -103,7 +104,7 @@ export async function sendTestPush() {
  */
 export function useTaskSnapshot(uid: string | undefined) {
   const items = useLiveQuery(async () => {
-    const dbs = await db.pages.filter((p) => p.kind === 'database' && !p.deleted_at && !p.purged).toArray()
+    const dbs = await db.pages.filter((p) => p.kind === 'database' && !p.calendar_category && !p.deleted_at && !p.purged).toArray()
     const dateProp = new Map<string, string>()
     for (const d of dbs) {
       const prop = d.schema?.find((p) => p.type === 'date')
@@ -115,12 +116,24 @@ export function useTaskSnapshot(uid: string | undefined) {
       .filter((r) => !r.deleted_at && !r.purged && !r.is_template)
       .toArray()
     const since = Date.now() - 2 * 86_400_000
-    return rows
+    const classes = (await loadClassEvents()).map(
+      (c): AgendaItem => ({
+        id: c.page.id,
+        kind: 'event',
+        title: c.subject ? `${c.subject.title} · ${c.page.title}` : c.page.title,
+        start: c.start,
+        allDay: c.start.length === 10,
+        category: c.category,
+        location: c.prep ? `Antes: ${c.prep}` : c.topic,
+        url: `/p/${c.page.id}`,
+      }),
+    )
+    return [...rows
       .flatMap((r): AgendaItem[] => {
         const v = r.props[dateProp.get(r.database_id!)!] as DateValue | null
         if (!v?.start) return []
         return [{ id: r.id, kind: 'task', title: r.title || 'Sin título', start: v.start, allDay: v.start.length === 10, url: `/p/${r.id}` }]
-      })
+      }), ...classes]
       .filter((t) => new Date(t.allDay ? `${t.start}T23:59:59` : t.start).getTime() >= since)
       .sort((a, b) => a.start.localeCompare(b.start))
       .slice(0, 500)

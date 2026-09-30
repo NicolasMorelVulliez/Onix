@@ -264,3 +264,15 @@ export async function getFile(accountId: string, fileId: string) {
 export async function streamToken(accountId: string) {
   return accessToken(accountId)
 }
+
+/** Downloads a Drive file for the AI reader: Google Docs/Sheets/Slides are exported as PDF. */
+export async function downloadDriveFile(accountId: string, file: Pick<DriveFile, 'id' | 'mimeType'>): Promise<Blob> {
+  const google = file.mimeType.startsWith('application/vnd.google-apps.')
+  const url = google
+    ? `https://www.googleapis.com/drive/v3/files/${file.id}/export?mimeType=application/pdf`
+    : `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&supportsAllDrives=true`
+  const res = await fetch(url, { headers: { authorization: `Bearer ${await accessToken(accountId)}` } })
+  if (!res.ok) throw new Error(`Drive respondió ${res.status}`)
+  const blob = await res.blob()
+  return google ? new Blob([blob], { type: 'application/pdf' }) : blob
+}

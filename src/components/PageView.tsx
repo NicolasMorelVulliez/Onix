@@ -1,5 +1,6 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { HardDrive, SmilePlus, Trash2, Undo2 } from 'lucide-react'
+import { GraduationCap, HardDrive, SmilePlus, Trash2, Undo2 } from 'lucide-react'
+import { NewSubjectDialog } from './subjects/NewSubjectDialog'
 import { DrivePanel, LinkDriveDialog } from './drive/DrivePanel'
 import { useEffect, useRef, useState } from 'react'
 import { useBreadcrumbs, usePage } from '../lib/hooks'
@@ -90,6 +91,7 @@ function TrashBanner({ page }: { page: Page }) {
 function Header({ page }: { page: Page }) {
   const emoji = usePopover()
   const [linking, setLinking] = useState(false)
+  const [newSubject, setNewSubject] = useState(false)
   const [title, setTitle] = useState(page.title)
   const ref = useRef<HTMLTextAreaElement>(null)
   useEffect(() => setTitle(page.title), [page.title])
@@ -123,7 +125,13 @@ function Header({ page }: { page: Page }) {
             <HardDrive size={16} /> Vincular carpeta de Drive
           </button>
         )}
+        {page.kind === 'page' && !page.database_id && (
+          <button type="button" onClick={() => setNewSubject(true)} className="flex items-center gap-1 rounded px-1.5 py-1 hover:bg-hover">
+            <GraduationCap size={16} /> Nueva materia acá
+          </button>
+        )}
       </div>
+      {newSubject && <NewSubjectDialog parent={page} onClose={() => setNewSubject(false)} />}
       {linking && <LinkDriveDialog page={page} onClose={() => setLinking(false)} />}
       <Popover anchor={emoji.anchor} open={emoji.open} onClose={emoji.close}>
         <EmojiPicker

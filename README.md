@@ -35,7 +35,7 @@ Sin `.env.local` la app funciona **solo en modo local**. Ver `.env.example`.
 1. <https://console.cloud.google.com> → elegir el proyecto → *APIs y servicios → Biblioteca*:
    habilitar **Google Calendar API**, **Google Drive API** y **Gmail API**.
 2. *Pantalla de consentimiento de OAuth* → tipo **Externo** → completar nombre (Onix) y tu email.
-   Agregar los permisos: `calendar.calendarlist.readonly`, `calendar.events`, `drive.readonly`, `gmail.modify`.
+   Agregar los permisos: `calendar.calendarlist.readonly`, `calendar.events`, `drive`, `gmail.modify`.
    Después tocar **Publicar app** (estado *En producción*): si queda en *Prueba*, Google corta el acceso cada 7 días.
    Como la app no está verificada, al vincular vas a ver un aviso: *Configuración avanzada → Ir a Onix*.
 3. *Credenciales → Crear credenciales → ID de cliente de OAuth → Aplicación web*. URIs de redireccionamiento:
@@ -51,6 +51,9 @@ Sin `.env.local` la app funciona **solo en modo local**. Ver `.env.example`.
 1. Subir el repo a GitHub e importarlo en <https://vercel.com>.
 2. *Settings → Environment Variables*: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `TOKEN_SECRET`,
    `FIREBASE_PROJECT_ID`, `APP_ORIGINS=https://tu-proyecto.web.app`.
+
+### IA para cronogramas (opcional)
+Crear una API key en <https://console.anthropic.com> (necesita saldo; cada cronograma cuesta centavos) y cargarla en Vercel como `ANTHROPIC_API_KEY`.
 
 ### 4. Publicar en Firebase Hosting
 Crear `.env.production.local` (solo se usa al compilar para producción) con
@@ -73,6 +76,7 @@ La app queda en `https://tu-proyecto.web.app`. En el iPhone: Safari → Comparti
 - **Mi día:** agenda de hoy con tus tareas al lado; arrastrá una tarea al horario (o tocá ⏰ en el celular) para agendarla.
 - **Tareas repetitivas:** en la página de la tarea, *Repetir* (diaria, semanal con días, mensual, anual); al marcarla hecha pasa sola a la próxima fecha.
 - **Importar de Notion:** Inicio → *Importar de Notion* y subí el .zip exportado en formato *Markdown y CSV*.
+- **Materias:** en una página de cuatrimestre, *Nueva materia acá*: días y horarios (o *Leer el cronograma* con IA) → crea la materia, su cronograma de clases en el Calendario (UADE) y las carpetas `Materia/Clase N - dd mm/Grabaciones` en Drive. Cualquier página se puede vincular a una carpeta de Drive y las grabaciones se ven dentro de Onix.
 - **Siri:** el atajo *Agregar a Onix* (iCloud Drive → Onix) crea tareas dictadas: "comprar yerba mañana a las 10".
 - **Calendario:** junta todo; creá, editá, mové y borrá eventos de Google; los chips filtran por categoría y *Tareas* muestra filas de bases de datos con fecha.
 - **Correo:** bandeja unificada de todas las cuentas: leer, buscar (sintaxis de Gmail), responder, archivar y redactar

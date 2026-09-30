@@ -9,6 +9,9 @@ import { addTask, scheduleTask, setTaskDone, taskMinutes, unscheduleTask, useTas
 import type { CalendarEvent } from '../../lib/types'
 import { cx } from '../../lib/util'
 import { EventDialog } from '../calendar/EventDialog'
+import { ClassDialog } from '../calendar/ClassDialog'
+import { useClassEvents, type ClassEvent } from '../../lib/classes'
+import { CATEGORIES } from '../../lib/calendar'
 import { TopBar } from '../TopBar'
 import { MenuItem, Popover, usePopover } from '../ui'
 
@@ -27,6 +30,7 @@ interface Block {
   color: string
   event?: CalendarEvent
   task?: Task
+  cls?: ClassEvent
 }
 
 const minutesOf = (iso: string) => {
@@ -62,6 +66,8 @@ export function TodayView() {
   const [day, setDay] = useState(todayYmd())
   const navigate = useNavigate()
   const tasks = useTasks()
+  const classes = useClassEvents()
+  const [selectedClass, setSelectedClass] = useState<ClassEvent | null>(null)
   const sources = useLiveQuery(() => db.calendar_sources.filter((s) => !s.deleted_at && !!s.enabled).toArray(), [])
   const events = useLiveQuery(() => db.events.toArray(), [])
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
@@ -88,13 +94,20 @@ export function TodayView() {
         blocks.push({ id: e.id, start, end: Math.max(end, start + 15), title: e.title, color, event: e })
       }
     }
+    for (const c of classes ?? []) {
+      if (!isTimed(c.start) || dayOf(c.start) !== day) continue
+      const start = minutesOf(c.start)
+      const end = c.end && isTimed(c.end) ? minutesOf(c.end) : start + 60
+      const color = CATEGORIES.find((x) => x.id === c.category)?.color ?? 'var(--accent)'
+      blocks.push({ id: c.page.id, start, end: Math.max(end, start + 15), title: c.subject ? `${c.subject.title} · ${c.page.title}` : c.page.title, color, cls: c })
+    }
     for (const t of tasks ?? []) {
       if (!t.date || !isTimed(t.date.start) || dayOf(t.date.start) !== day) continue
       const start = minutesOf(t.date.start)
       blocks.push({ id: t.page.id, start, end: start + taskMinutes(t), title: t.page.title || 'Sin título', color: 'var(--accent)', task: t })
     }
     return { allDay, blocks: layout(blocks) }
-  }, [events, tasks, colorOf, day])
+  }, [events, tasks, classes, colorOf, day])
 
   const lists = useMemo(() => {
     const open = (tasks ?? []).filter((t) => !t.done)
@@ -138,7 +151,7 @@ export function TodayView() {
         </div>
 
         <div className="flex gap-6 max-md:flex-col-reverse">
-          <Timeline day={day} allDay={allDay} blocks={blocks} tasks={tasks ?? []} onEvent={setSelectedEvent} onOpenTask={openPage} />
+          <Timeline day={day} allDay={allDay} blocks={blocks} tasks={tasks ?? []} onEvent={setSelectedEvent} onClass={setSelectedClass} onOpenTask={openPage} />
 
           <aside className="w-80 flex-none space-y-5 text-sm max-md:w-full">
             <form
@@ -173,6 +186,7 @@ export function TodayView() {
           </aside>
         </div>
       </div>
+      {selectedClass && <ClassDialog ev={selectedClass} onClose={() => setSelectedClass(null)} />}
       {selectedEvent && (
         <EventDialog event={selectedEvent} source={sources?.find((s) => s.id === selectedEvent.source_id)} onClose={() => setSelectedEvent(null)} />
       )}
@@ -278,6 +292,7 @@ function Timeline({
   blocks,
   tasks,
   onEvent,
+  onClass,
   onOpenTask,
 }: {
   day: string
@@ -285,6 +300,7 @@ function Timeline({
   blocks: (Block & { col: number; cols: number })[]
   tasks: Task[]
   onEvent: (e: CalendarEvent) => void
+  onClass: (c: ClassEvent) => void
   onOpenTask: (id: string) => void
 }) {
   const scroller = useRef<HTMLDivElement>(null)
@@ -348,7 +364,7 @@ function Timeline({
             </div>
           )}
           {blocks.map((b) => (
-            <TimelineBlock key={b.id} block={b} onEvent={onEvent} onOpenTask={onOpenTask} />
+            <TimelineBlock key={b.id} block={b} onEvent={onEvent} onClass={onClass} onOpenTask={onOpenTask} />
           ))}
           {day === ymd(now) && nowMin >= START_H * 60 && (
             <div className="pointer-events-none absolute left-10 right-0 z-10 flex items-center" style={{ top: (nowMin - START_H * 60) * PX_MIN }}>
@@ -362,7 +378,17 @@ function Timeline({
   )
 }
 
-function TimelineBlock({ block: b, onEvent, onOpenTask }: { block: Block & { col: number; cols: number }; onEvent: (e: CalendarEvent) => void; onOpenTask: (id: string) => void }) {
+function TimelineBlock({
+  block: b,
+  onEvent,
+  onClass,
+  onOpenTask,
+}: {
+  block: Block & { col: number; cols: number }
+  onEvent: (e: CalendarEvent) => void
+  onClass: (c: ClassEvent) => void
+  onOpenTask: (id: string) => void
+}) {
   const pop = usePopover()
   const top = (Math.max(b.start, START_H * 60) - START_H * 60) * PX_MIN
   const height = Math.max(18, (b.end - Math.max(b.start, START_H * 60)) * PX_MIN - 2)
@@ -374,7 +400,7 @@ function TimelineBlock({ block: b, onEvent, onOpenTask }: { block: Block & { col
       <div
         draggable={!!task}
         onDragStart={(e) => task && e.dataTransfer.setData('text/task', task.page.id)}
-        onClick={(e) => (task ? pop.toggle(e.currentTarget) : onEvent(b.event!))}
+        onClick={(e) => (task ? pop.toggle(e.currentTarget) : b.cls ? onClass(b.cls) : onEvent(b.event!))}
         className={cx(
           'absolute cursor-pointer overflow-hidden rounded-md px-1.5 py-0.5 text-xs leading-tight',
           task ? 'border-l-4 border-accent bg-accent/15 text-fg' : 'text-white',

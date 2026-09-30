@@ -41,7 +41,7 @@ export function toTask(page: Page, database: Page): Task {
 /** Every task of every database that has a date or a status property. */
 export function useTasks() {
   return useLiveQuery(async () => {
-    const dbs = await db.pages.filter((p) => p.kind === 'database' && !p.deleted_at && !p.purged).toArray()
+    const dbs = await db.pages.filter((p) => p.kind === 'database' && !p.calendar_category && !p.deleted_at && !p.purged).toArray()
     const withTasks = dbs.filter((d) => {
       const { dateProp, statusProp } = taskProps(d)
       return dateProp || statusProp
@@ -86,7 +86,7 @@ export function taskMinutes(task: Task) {
 
 /** The database where new tasks go: one named "Tareas", else the first with a date and a status. */
 export async function taskDatabase(): Promise<Page> {
-  const dbs = await db.pages.filter((p) => p.kind === 'database' && !p.deleted_at && !p.purged).toArray()
+  const dbs = await db.pages.filter((p) => p.kind === 'database' && !p.calendar_category && !p.deleted_at && !p.purged).toArray()
   const usable = dbs.filter((d) => taskProps(d).dateProp && taskProps(d).statusProp)
   const found = usable.find((d) => /^tareas?$/i.test(d.title.trim())) ?? usable[0]
   if (found) return found

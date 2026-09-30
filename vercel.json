@@ -1,4 +1,16 @@
 {
-  "rewrites": [{ "source": "/((?!api/|assets/|.*\\.).*)", "destination": "/index.html" }],
-  "functions": { "api/cron/tick.ts": { "maxDuration": 30 } }
+  "rewrites": [
+    {
+      "source": "/((?!api/|assets/|.*\\.).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "functions": {
+    "api/cron/tick.ts": {
+      "maxDuration": 30
+    },
+    "api/ai/cronograma.ts": {
+      "maxDuration": 60
+    }
+  }
 }

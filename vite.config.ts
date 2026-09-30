@@ -8,6 +8,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 import * as googleCallback from './api/google/callback.js'
 import * as googleStart from './api/google/start.js'
 import * as googleToken from './api/google/token.js'
+import * as cronograma from './api/ai/cronograma.js'
 import * as cronTick from './api/cron/tick.js'
 import * as ics from './api/ics.js'
 import * as pushTest from './api/push/test.js'
@@ -22,6 +23,7 @@ const routes: Record<string, Record<string, Handler | undefined>> = {
   '/api/push/test': pushTest,
   '/api/cron/tick': cronTick,
   '/api/quick-add': quickAdd,
+  '/api/ai/cronograma': cronograma,
 }
 
 /** Serves the Vercel functions in /api during `npm run dev`. */
@@ -31,7 +33,9 @@ function devApi(): Plugin {
     configureServer(server) {
       // Re-read .env files on every (re)start: Vite's loadEnv keeps stale values already in process.env.
       for (const file of ['.env', '.env.local']) {
-        if (existsSync(file)) Object.assign(process.env, parseEnv(readFileSync(file, 'utf8')))
+        if (!existsSync(file)) continue
+        // Only server variables: VITE_* ones are the browser's and Vite resolves them itself.
+        for (const [k, v] of Object.entries(parseEnv(readFileSync(file, 'utf8')))) if (!k.startsWith('VITE_')) process.env[k] = v
       }
       server.middlewares.use(async (req, res, next) => {
         const url = new URL(req.url ?? '/', `http://${req.headers.host}`)

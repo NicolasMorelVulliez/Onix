@@ -65,6 +65,8 @@ export interface Page extends Syncable {
   repeat?: RepeatRule | null
   /** Linked Google Drive folder: its files (and recordings) show inside the page. */
   drive?: DriveLink | null
+  /** Databases only: rows are calendar events of this category (e.g. classes), not tasks. */
+  calendar_category?: CalendarCategory | null
 }
 
 export interface DriveLink {

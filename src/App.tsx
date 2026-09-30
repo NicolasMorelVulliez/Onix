@@ -1,13 +1,15 @@
 import { onAuthStateChanged, type User } from 'firebase/auth'
 import { createRootRoute, createRoute, createRouter, Navigate, Outlet, RouterProvider } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { AccountsPage } from './components/AccountsPage'
+import type { InkSearch } from './components/ink/InkEditor'
 import { CalendarView } from './components/calendar/CalendarView'
 import { DrivePicker } from './components/drive/DrivePicker'
 import { DriveView } from './components/drive/DriveView'
 import { Home } from './components/Home'
 import { ImportPage } from './components/ImportPage'
 import { MailView } from './components/mail/MailView'
+import { NotebooksView } from './components/ink/NotebooksView'
 import { NotificationsPage } from './components/NotificationsPage'
 import { Login } from './components/Login'
 import { Splash } from './components/Splash'
@@ -16,6 +18,7 @@ import { SearchPalette } from './components/SearchPalette'
 import { Sidebar } from './components/Sidebar'
 import { TodayView } from './components/today/TodayView'
 import { TrashView } from './components/TrashView'
+import { startInkSync } from './lib/ink/store'
 import { useTaskSnapshot } from './lib/notifications'
 import { startSync } from './lib/sync'
 import { useApplyTheme } from './lib/theme'
@@ -58,6 +61,16 @@ const mailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/mail', 
 const notificationsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/notifications', component: NotificationsPage })
 const todayRoute = createRoute({ getParentRoute: () => rootRoute, path: '/today', component: TodayView })
 const importRoute = createRoute({ getParentRoute: () => rootRoute, path: '/import', component: ImportPage })
+const notebooksRoute = createRoute({ getParentRoute: () => rootRoute, path: '/notebooks', component: NotebooksView })
+const inkRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/ink/$docId',
+  validateSearch: (s: Record<string, unknown>): InkSearch => {
+    const str = (v: unknown) => (typeof v === 'string' && v ? v : undefined)
+    return { a: str(s.a), f: str(s.f), d: str(s.d) }
+  },
+  component: InkRoute,
+})
 const routeTree = rootRoute.addChildren([
   homeRoute,
   importRoute,
@@ -69,11 +82,26 @@ const routeTree = rootRoute.addChildren([
   accountsRoute,
   mailRoute,
   notificationsRoute,
+  inkRoute,
+  notebooksRoute,
 ])
 
 function PageRoute() {
   const { pageId } = pageRoute.useParams()
   return <PageView key={pageId} pageId={pageId} />
+}
+
+// The notebook editor brings pdf.js and the pencil code: loaded only when a notebook opens.
+const InkEditor = lazy(() => import('./components/ink/InkEditor').then((m) => ({ default: m.InkEditor })))
+
+function InkRoute() {
+  const { docId } = inkRoute.useParams()
+  const search = inkRoute.useSearch()
+  return (
+    <Suspense fallback={<div className="fixed inset-0 z-[45] bg-bg" />}>
+      <InkEditor key={docId} docId={docId} search={search} />
+    </Suspense>
+  )
 }
 
 const router = createRouter({ routeTree })
@@ -92,6 +120,7 @@ export function App() {
 
   const userId = user?.uid
   useEffect(() => (userId ? startSync(userId) : undefined), [userId])
+  useEffect(() => (userId ? startInkSync() : undefined), [userId])
   useTaskSnapshot(userId)
 
   if (auth && user === undefined) return <Splash />

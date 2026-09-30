@@ -1,12 +1,15 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronRight, ExternalLink, Folder, Loader2, PlayCircle, RefreshCw, Unlink } from 'lucide-react'
+import { ChevronRight, ExternalLink, Folder, Loader2, NotebookPen, PenLine, PlayCircle, RefreshCw, Unlink, UploadCloud } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { db } from '../../lib/db'
-import { FOLDER, isVideo, listDrive, type DriveFile } from '../../lib/google'
+import { canWriteOn, FOLDER, isVideo, listDrive, PDF, type DriveFile } from '../../lib/google'
+import { displayName } from '../../lib/ink/store'
 import { updatePage } from '../../lib/pages'
 import type { Page } from '../../lib/types'
 import { cx } from '../../lib/util'
 import { Dialog } from '../calendar/Dialog'
+import { NewNotebookDialog } from '../ink/NewNotebookDialog'
+import { useOpenInk } from '../ink/useOpenInk'
 import { DriveBrowser } from './DriveBrowser'
 import { VideoPlayer } from './VideoPlayer'
 
@@ -38,7 +41,12 @@ export function DrivePanel({ page }: { page: Page }) {
   const [error, setError] = useState<string | null>(null)
   const [playing, setPlaying] = useState<DriveFile | null>(null)
   const [relink, setRelink] = useState(false)
+  const [newNotebook, setNewNotebook] = useState(false)
+  const openInk = useOpenInk()
   const current = path.at(-1)!
+  // Notebooks made here that aren't in the list yet: not uploaded (no connection…) or just uploaded.
+  const local = useLiveQuery(() => db.ink.where('folder_id').equals(current.id).toArray(), [current.id])
+  const pending = files ? local?.filter((d) => !d.file_id || !files.some((f) => f.id === d.file_id)) : []
 
   const load = useCallback(async () => {
     setError(null)
@@ -59,9 +67,12 @@ export function DrivePanel({ page }: { page: Page }) {
     load()
   }, [load])
 
+  const write = (f: DriveFile) => openInk({ file: f, accountId: link.accountId, folderId: current.id })
   const open = (f: DriveFile) => {
     if (f.mimeType === FOLDER) setPath([...path, { id: f.id, name: f.name }])
     else if (isVideo(f)) setPlaying(f)
+    // PDFs open in Onix, ready to write on them with the pencil.
+    else if (f.mimeType === PDF) write(f)
     else window.open(f.webViewLink, '_blank', 'noreferrer')
   }
 
@@ -78,6 +89,9 @@ export function DrivePanel({ page }: { page: Page }) {
           </span>
         ))}
         <span className="ml-auto flex items-center gap-0.5">
+          <button type="button" onClick={() => setNewNotebook(true)} className="mr-1 flex items-center gap-1 rounded-md px-1.5 py-0.5 text-accent hover:bg-hover">
+            <NotebookPen size={14} /> Cuaderno
+          </button>
           <button type="button" title="Actualizar" onClick={load} className="rounded p-1 text-muted hover:bg-hover">
             <RefreshCw size={13} />
           </button>
@@ -106,18 +120,48 @@ export function DrivePanel({ page }: { page: Page }) {
       <div className="max-h-72 overflow-y-auto p-1">
         {error && <p className="px-2 py-1 text-red-600 dark:text-red-400">{error}</p>}
         {!files && !error && <Loader2 size={15} className="m-2 animate-spin text-muted" />}
-        {files?.length === 0 && <p className="px-2 py-1 text-muted">La carpeta está vacía.</p>}
-        {files?.map((f) => (
-          <button key={f.id} type="button" onClick={() => open(f)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-hover">
-            {f.iconLink ? <img src={f.iconLink} alt="" className="size-4 flex-none" /> : <Folder size={15} className="flex-none text-muted" />}
-            <span className="min-w-0 flex-1 truncate">{f.name}</span>
-            {isVideo(f) && <PlayCircle size={14} className="flex-none text-accent" />}
-            {f.modifiedTime && <span className="flex-none text-xs text-muted max-md:hidden">{new Date(f.modifiedTime).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>}
+        {files?.length === 0 && !pending?.length && <p className="px-2 py-1 text-muted">La carpeta está vacía.</p>}
+        {pending?.map((d) => (
+          <button key={d.id} type="button" onClick={() => openInk(d.id)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-hover">
+            <NotebookPen size={15} className="flex-none text-accent" />
+            <span className="min-w-0 flex-1 truncate">{displayName(d.name)}</span>
+            {d.dirty ? (
+              <span className="flex flex-none items-center gap-1 text-xs text-muted">
+                <UploadCloud size={13} /> Sin subir
+              </span>
+            ) : null}
           </button>
+        ))}
+        {files?.map((f) => (
+          <div key={f.id} className="group/row flex items-center rounded hover:bg-hover">
+            <button type="button" onClick={() => open(f)} className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left">
+              {f.iconLink ? <img src={f.iconLink} alt="" className="size-4 flex-none" /> : <Folder size={15} className="flex-none text-muted" />}
+              <span className="min-w-0 flex-1 truncate">{f.name}</span>
+              {isVideo(f) && <PlayCircle size={14} className="flex-none text-accent" />}
+              {f.modifiedTime && <span className="flex-none text-xs text-muted max-md:hidden">{new Date(f.modifiedTime).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}</span>}
+            </button>
+            {canWriteOn(f) && (
+              <button type="button" title="Escribir encima con el lápiz" onClick={() => write(f)} className="mr-1 rounded p-1 text-muted hover:text-accent">
+                <PenLine size={14} />
+              </button>
+            )}
+            {f.mimeType === PDF && (
+              <a href={f.webViewLink} target="_blank" rel="noreferrer" title="Abrir en Drive" className="mr-1 rounded p-1 text-muted opacity-0 group-hover/row:opacity-100 max-md:hidden">
+                <ExternalLink size={13} />
+              </a>
+            )}
+          </div>
         ))}
       </div>
       {playing && <VideoPlayer file={playing} accountId={link.accountId} email={account?.email} onClose={() => setPlaying(null)} />}
       {relink && <LinkDriveDialog page={page} onClose={() => setRelink(false)} />}
+      {newNotebook && (
+        <NewNotebookDialog
+          folder={{ accountId: link.accountId, id: current.id, name: current.name }}
+          defaultName={`Apuntes - ${page.title || current.name}`}
+          onClose={() => setNewNotebook(false)}
+        />
+      )}
     </section>
   )
 }

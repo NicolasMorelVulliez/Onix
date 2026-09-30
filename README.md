@@ -77,6 +77,13 @@ La app queda en `https://tu-proyecto.web.app`. En el iPhone: Safari → Comparti
 - **Tareas repetitivas:** en la página de la tarea, *Repetir* (diaria, semanal con días, mensual, anual); al marcarla hecha pasa sola a la próxima fecha.
 - **Importar de Notion:** Inicio → *Importar de Notion* y subí el .zip exportado en formato *Markdown y CSV*.
 - **Materias:** en una página de cuatrimestre, *Nueva materia acá*: días y horarios (o *Leer el cronograma* con IA) → crea la materia, su cronograma de clases en el Calendario (UADE) y las carpetas `Materia/Clase N - dd mm/Grabaciones` en Drive. Cualquier página se puede vincular a una carpeta de Drive y las grabaciones se ven dentro de Onix.
+- **Cuadernos (lápiz):** escribí con el Apple Pencil en el iPad (con la app instalada) como en GoodNotes: hojas
+  rayadas, cuadriculadas, con puntos o lisas, o encima de cualquier PDF (también Presentaciones, Docs y archivos de
+  Office, que se pasan a PDF). Lapicera con presión, resaltador, goma, lazo para mover/recolorear, deshacer, zoom con
+  dos dedos; la palma apoyada no raya. En una clase: *Tomar apuntes* (Calendario / Mi día) o *Cuaderno* en su
+  carpeta de Drive; en cualquier página, `/cuaderno`; y la sección *Cuadernos*. Se guarda como PDF en Drive con los
+  trazos como anotaciones (se ven en Drive, Vista Previa, etc. y siguen editables en Onix); sin conexión queda en el
+  dispositivo y se sube después.
 - **Siri:** el atajo *Agregar a Onix* (iCloud Drive → Onix) crea tareas dictadas: "comprar yerba mañana a las 10".
 - **Calendario:** junta todo; creá, editá, mové y borrá eventos de Google; los chips filtran por categoría y *Tareas* muestra filas de bases de datos con fecha.
 - **Correo:** bandeja unificada de todas las cuentas: leer, buscar (sintaxis de Gmail), responder, archivar y redactar
@@ -100,6 +107,8 @@ src/
   components/   UI: Sidebar, PageView, Editor, SearchPalette (⌘K), database/ (Tabla, Tablero, propiedades)
   components/calendar/  pestaña Calendario
   components/drive/     pestaña Drive, selector de archivos
+  components/ink/       cuadernos: editor para el lápiz (InkCanvas), barra, nuevo cuaderno
+  lib/ink/              trazos (geometry), PDF con anotaciones (pdf.ts, en un worker), caché y subida a Drive (store)
   components/AccountsPage.tsx  cuentas de Google y links iCal
   sw.ts         service worker (offline + push)
 api/            funciones de Vercel: google/{start,callback,token}, ics

@@ -93,16 +93,27 @@ async function accessToken(accountId: string, force = false) {
   }
 }
 
-/** fetch() against a Google API as the given linked account. */
-export async function gfetch<T>(accountId: string, url: string, init: RequestInit = {}): Promise<T> {
+/** fetch() with the account's token, retried once with a fresh token if Google rejects it. */
+async function authFetch(accountId: string, url: string, init: RequestInit = {}) {
   const call = async (token: string) =>
     fetch(url, { ...init, headers: { ...init.headers, authorization: `Bearer ${token}` } })
-  let res = await call(await accessToken(accountId))
-  if (res.status === 401) res = await call(await accessToken(accountId, true))
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
-    throw new Error(body.error?.message ?? `Google respondió ${res.status}`)
+  const res = await call(await accessToken(accountId))
+  return res.status === 401 ? call(await accessToken(accountId, true)) : res
+}
+
+async function googleError(res: Response) {
+  const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
+  const message = body.error?.message ?? `Google respondió ${res.status}`
+  if (res.status === 403 && /insufficient|scope/i.test(message) && /googleapis\.com\/(upload\/)?drive\//.test(res.url)) {
+    return new Error('Falta el permiso para guardar en Drive: en Cuentas tocá "Actualizar permisos de Drive".')
   }
+  return new Error(message)
+}
+
+/** fetch() against a Google API as the given linked account. */
+export async function gfetch<T>(accountId: string, url: string, init: RequestInit = {}): Promise<T> {
+  const res = await authFetch(accountId, url, init)
+  if (!res.ok) throw await googleError(res)
   return (res.status === 204 ? null : res.json()) as Promise<T>
 }
 
@@ -271,8 +282,99 @@ export async function downloadDriveFile(accountId: string, file: Pick<DriveFile,
   const url = google
     ? `https://www.googleapis.com/drive/v3/files/${file.id}/export?mimeType=application/pdf`
     : `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&supportsAllDrives=true`
-  const res = await fetch(url, { headers: { authorization: `Bearer ${await accessToken(accountId)}` } })
-  if (!res.ok) throw new Error(`Drive respondió ${res.status}`)
+  const res = await authFetch(accountId, url)
+  if (!res.ok) throw await googleError(res)
   const blob = await res.blob()
   return google ? new Blob([blob], { type: 'application/pdf' }) : blob
+}
+
+// ---------- Files to write on (see lib/ink) ----------
+
+export const PDF = 'application/pdf'
+const EXPORTS_PDF = ['document', 'presentation', 'spreadsheet', 'drawing'].map((t) => `application/vnd.google-apps.${t}`)
+/** Office files Drive can turn into Google files (and those into PDF). */
+const CONVERT: Record<string, string> = {
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'presentation',
+  'application/vnd.ms-powerpoint': 'presentation',
+  'application/vnd.oasis.opendocument.presentation': 'presentation',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'document',
+  'application/msword': 'document',
+  'application/vnd.oasis.opendocument.text': 'document',
+  'application/rtf': 'document',
+  'text/plain': 'document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'spreadsheet',
+  'application/vnd.ms-excel': 'spreadsheet',
+}
+
+/** PDFs, Google Docs/Slides/Sheets and Office files can be written on (the last ones as a PDF copy). */
+export const canWriteOn = (f: Pick<DriveFile, 'mimeType'>) => f.mimeType === PDF || EXPORTS_PDF.includes(f.mimeType) || f.mimeType in CONVERT
+
+export interface DriveFileMeta {
+  id: string
+  name: string
+  mimeType: string
+  md5Checksum?: string
+  parents?: string[]
+  trashed?: boolean
+  capabilities?: { canEdit?: boolean }
+  webViewLink?: string
+  iconLink?: string
+  /** Tags only Onix sees (notebook, class it belongs to…). */
+  appProperties?: Record<string, string>
+}
+const META_FIELDS = 'id,name,mimeType,md5Checksum,parents,trashed,capabilities(canEdit),webViewLink,iconLink,appProperties'
+
+export async function fileMeta(accountId: string, fileId: string) {
+  return gfetch<DriveFileMeta>(accountId, `https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true&fields=${META_FIELDS}`)
+}
+
+/** The file's content as a PDF: exported (Google files), converted (Office files) or as is. */
+export async function fileAsPdf(accountId: string, file: Pick<DriveFile, 'id' | 'mimeType'>): Promise<ArrayBuffer> {
+  if (file.mimeType === PDF || EXPORTS_PDF.includes(file.mimeType)) return (await downloadDriveFile(accountId, file)).arrayBuffer()
+  const kind = CONVERT[file.mimeType]
+  if (!kind) throw new Error('Este archivo no se puede abrir como PDF.')
+  // Drive only exports Google files: a temporary Google copy is exported and deleted.
+  const copy = await gfetch<{ id: string }>(accountId, `https://www.googleapis.com/drive/v3/files/${file.id}/copy?supportsAllDrives=true&fields=id`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'Onix (temporal)', mimeType: `application/vnd.google-apps.${kind}` }),
+  })
+  try {
+    return await (await downloadDriveFile(accountId, { id: copy.id, mimeType: `application/vnd.google-apps.${kind}` })).arrayBuffer()
+  } finally {
+    await gfetch(accountId, `https://www.googleapis.com/drive/v3/files/${copy.id}?supportsAllDrives=true`, { method: 'DELETE' }).catch(() => {})
+  }
+}
+
+/** Files Onix tagged (appProperties), e.g. the notebooks of a class folder. */
+export async function findTagged(accountId: string, props: Record<string, string>, folderId?: string) {
+  const q = [
+    ...Object.entries(props).map(([k, v]) => `appProperties has { key='${k}' and value='${v}' }`),
+    ...(folderId ? [`'${folderId}' in parents`] : []),
+    'trashed = false',
+  ].join(' and ')
+  const params = new URLSearchParams({ q, fields: `files(${FILE_FIELDS})`, orderBy: 'modifiedTime desc', supportsAllDrives: 'true', includeItemsFromAllDrives: 'true' })
+  return (await gfetch<{ files: DriveFile[] }>(accountId, `https://www.googleapis.com/drive/v3/files?${params}`)).files
+}
+
+export type UploadTarget = { fileId: string } | { name: string; folderId: string | null; appProperties?: Record<string, string> }
+
+/** Creates or replaces a PDF in Drive (resumable upload, so big PDFs go through too). */
+export async function uploadPdf(accountId: string, target: UploadTarget, bytes: Uint8Array): Promise<DriveFileMeta> {
+  const existing = 'fileId' in target
+  const url = `https://www.googleapis.com/upload/drive/v3/files${existing ? `/${target.fileId}` : ''}?uploadType=resumable&supportsAllDrives=true&fields=${META_FIELDS}`
+  const meta = existing
+    ? {}
+    : { name: target.name, mimeType: PDF, ...(target.folderId ? { parents: [target.folderId] } : {}), ...(target.appProperties ? { appProperties: target.appProperties } : {}) }
+  const start = await authFetch(accountId, url, {
+    method: existing ? 'PATCH' : 'POST',
+    headers: { 'content-type': 'application/json; charset=UTF-8', 'x-upload-content-type': PDF },
+    body: JSON.stringify(meta),
+  })
+  if (!start.ok) throw await googleError(start)
+  const session = start.headers.get('location')
+  if (!session) throw new Error('Drive no aceptó la subida.')
+  const res = await fetch(session, { method: 'PUT', headers: { 'content-type': PDF }, body: bytes as Uint8Array<ArrayBuffer> })
+  if (!res.ok) throw await googleError(res)
+  return res.json()
 }

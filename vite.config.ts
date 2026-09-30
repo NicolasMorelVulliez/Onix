@@ -64,7 +64,8 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.ts',
       registerType: 'autoUpdate',
-      injectManifest: { maximumFileSizeToCacheInBytes: 6 * 1024 * 1024 },
+      // .mjs: pdf.js' worker, so PDFs open (and can be written on) without connection.
+      injectManifest: { maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, globPatterns: ['**/*.{js,mjs,css,html}'] },
       manifest: {
         name: 'Onix',
         short_name: 'Onix',

@@ -1,11 +1,14 @@
 import { useNavigate } from '@tanstack/react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { BookOpen, Clock, Folder, Lightbulb, Loader2, PlayCircle } from 'lucide-react'
+import { BookOpen, Clock, Folder, Lightbulb, Loader2, NotebookPen, PlayCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { ClassEvent } from '../../lib/classes'
 import { db } from '../../lib/db'
 import { FOLDER, isVideo, listDrive, type DriveFile } from '../../lib/google'
+import { classNotebook, writableAccounts } from '../../lib/ink/store'
+import { useInkTools } from '../../lib/ink/tools'
 import type { DriveLink } from '../../lib/types'
+import { useOpenInk } from '../ink/useOpenInk'
 import { VideoPlayer } from '../drive/VideoPlayer'
 import { Dialog } from './Dialog'
 
@@ -19,7 +22,22 @@ export function ClassDialog({ ev, onClose }: { ev: ClassEvent; onClose: () => vo
   const past = new Date(ev.end ?? ev.start).getTime() < Date.now()
   const [recordings, setRecordings] = useState<DriveFile[] | null>(null)
   const [playing, setPlaying] = useState<DriveFile | null>(null)
+  const [opening, setOpening] = useState(false)
+  const openInk = useOpenInk()
   const link = ev.page.drive
+
+  // The class notebook: in the class folder (or the subject's), the same one every time.
+  const takeNotes = async () => {
+    setOpening(true)
+    try {
+      const folder = link ?? ev.subject?.drive ?? null
+      const accountId = folder?.accountId ?? (await writableAccounts())[0]?.id ?? null
+      const name = `Apuntes - ${ev.page.title}`
+      await openInk(await classNotebook({ pageId: ev.page.id, accountId, folderId: folder?.folderId ?? null, name, paper: useInkTools.getState().paper }))
+    } finally {
+      setOpening(false)
+    }
+  }
 
   useEffect(() => {
     if (!link || !past) return
@@ -60,6 +78,9 @@ export function ClassDialog({ ev, onClose }: { ev: ClassEvent; onClose: () => vo
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => navigate({ to: '/p/$pageId', params: { pageId: ev.page.id } })} className="rounded-md bg-accent px-2.5 py-1.5 font-medium text-accent-fg">
             Abrir la clase
+          </button>
+          <button type="button" onClick={takeNotes} disabled={opening} className={btn}>
+            {opening ? <Loader2 size={14} className="animate-spin" /> : <NotebookPen size={14} />} Tomar apuntes
           </button>
           {link && (
             <a href={folderUrl(link, email(link))} target="_blank" rel="noreferrer" className={btn}>

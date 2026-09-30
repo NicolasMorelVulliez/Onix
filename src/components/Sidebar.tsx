@@ -13,6 +13,7 @@ import {
   Mail,
   LogOut,
   MoreHorizontal,
+  NotebookPen,
   Plus,
   Search,
   Trash2,
@@ -59,7 +60,7 @@ export function Sidebar() {
     navigate({ to: '/p/$pageId', params: { pageId: id } })
     setSidebarOpen(false)
   }
-  const go = (to: '/today' | '/calendar' | '/drive' | '/mail' | '/accounts' | '/notifications' | '/trash') => {
+  const go = (to: '/today' | '/calendar' | '/drive' | '/notebooks' | '/mail' | '/accounts' | '/notifications' | '/trash') => {
     navigate({ to })
     setSidebarOpen(false)
   }
@@ -115,6 +116,9 @@ export function Sidebar() {
         </SideButton>
         <SideButton icon={<HardDrive size={16} />} onClick={() => go('/drive')}>
           Drive
+        </SideButton>
+        <SideButton icon={<NotebookPen size={16} />} onClick={() => go('/notebooks')}>
+          Cuadernos
         </SideButton>
       </div>
 

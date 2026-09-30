@@ -10,18 +10,20 @@ import {
   type DefaultReactSuggestionItem,
 } from '@blocknote/react'
 import { useNavigate } from '@tanstack/react-router'
-import { Database, FileText, Frame, HardDrive, MessageSquareQuote } from 'lucide-react'
+import { Database, FileText, Frame, HardDrive, MessageSquareQuote, NotebookPen } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
 import { schema, type AppEditor } from '../blocks/schema'
 import { uploadFile } from '../lib/files'
 import { driveBlock } from '../lib/drive-block'
+import { notebookInDrive } from '../lib/ink/store'
+import { useInkTools } from '../lib/ink/tools'
 import { createDatabase, createPage, updatePage } from '../lib/pages'
 import { useDrivePicker } from './drive/DrivePicker'
 import type { Page } from '../lib/types'
 import { debounce } from '../lib/util'
 import { useColorScheme } from '../lib/theme'
 
-function customItems(editor: AppEditor, page: Page, open: (id: string) => void): DefaultReactSuggestionItem[] {
+function customItems(editor: AppEditor, page: Page, open: (id: string) => void, openInk: (docId: string) => void): DefaultReactSuggestionItem[] {
   return [
     {
       title: 'Página',
@@ -63,6 +65,22 @@ function customItems(editor: AppEditor, page: Page, open: (id: string) => void):
       icon: <HardDrive size={18} />,
       onItemClick: () =>
         useDrivePicker.getState().open((file, accountId) => insertOrUpdateBlockForSlashMenu(editor, driveBlock(file, accountId))),
+    },
+    {
+      title: 'Cuaderno',
+      subtext: 'Hojas para escribir con el lápiz, guardadas como PDF en Drive',
+      aliases: ['cuaderno', 'notebook', 'lapiz', 'lápiz', 'escribir', 'dibujar', 'apuntes', 'goodnotes'],
+      group: 'Multimedia',
+      icon: <NotebookPen size={18} />,
+      onItemClick: async () => {
+        try {
+          const { docId, file, accountId } = await notebookInDrive({ name: `Apuntes - ${page.title || 'sin título'}`, folder: page.drive ?? null, paper: useInkTools.getState().paper })
+          insertOrUpdateBlockForSlashMenu(editor, driveBlock(file, accountId))
+          openInk(docId)
+        } catch (e) {
+          alert(e instanceof Error ? e.message : String(e))
+        }
+      },
     },
     {
       title: 'Embed',
@@ -109,7 +127,12 @@ export function Editor({ page }: { page: Page }) {
           filterSuggestionItems(
             [
               ...getDefaultReactSlashMenuItems(editor),
-              ...customItems(editor, page, (id) => navigate({ to: '/p/$pageId', params: { pageId: id } })),
+              ...customItems(
+                editor,
+                page,
+                (id) => navigate({ to: '/p/$pageId', params: { pageId: id } }),
+                (docId) => navigate({ to: '/ink/$docId', params: { docId } }),
+              ),
             ],
             query,
           )

@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
+import type { InkDoc, InkStrokes } from './ink/types'
 import type { AppSetting, CalendarEvent, CalendarSource, GoogleAccount, Page, View } from './types'
 
 interface Meta {
@@ -13,6 +14,9 @@ class AppDB extends Dexie {
   events!: EntityTable<CalendarEvent, 'id'>
   google_accounts!: EntityTable<GoogleAccount, 'id'>
   settings!: EntityTable<AppSetting, 'id'>
+  /** Handwriting documents: cached PDFs and pending uploads (local only, the PDF in Drive is the copy). */
+  ink!: EntityTable<InkDoc, 'id'>
+  ink_strokes!: EntityTable<InkStrokes, 'id'>
   meta!: EntityTable<Meta, 'key'>
 
   constructor() {
@@ -28,6 +32,7 @@ class AppDB extends Dexie {
     })
     this.version(3).stores({ google_accounts: 'id, dirty' })
     this.version(4).stores({ settings: 'id, dirty' })
+    this.version(5).stores({ ink: 'id, file_id, source_id, folder_id, dirty', ink_strokes: 'id, doc_id' })
   }
 }
 

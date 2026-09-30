@@ -1,9 +1,9 @@
-import { decryptToken, googleToken, handle, HttpError, json, preflight, requireUser } from '../_lib.js'
+import { decryptToken, googleToken, handle, HttpError, json, preflight, requireMember } from '../_lib.js'
 
 /** Trades a linked account's encrypted refresh token for a 1-hour access token. */
 export async function POST(request: Request) {
   return handle(request, async () => {
-    const uid = await requireUser(request)
+    const uid = await requireMember(request)
     const { token } = (await request.json()) as { token?: string }
     const data = await decryptToken(token ?? '').catch(() => {
       throw new HttpError(400, 'Token inválido')

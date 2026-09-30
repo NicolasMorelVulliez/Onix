@@ -1,10 +1,30 @@
 rules_version = '2';
 
-// Each user only reads and writes their own data: users/{uid}/{table}/{id}
+// Onix is private: only its owner and the Google accounts the owner added (members/{email})
+// get in, and they all work in the owner's space. Keep ownerId() in sync with shared/access.ts.
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{uid}/{table}/{id} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+    function ownerId() {
+      return '6uwvd6RHyMhce5F5GOSDRuUMLRj1';
+    }
+    function isOwner() {
+      return request.auth != null && request.auth.uid == ownerId();
+    }
+    function isMember() {
+      return isOwner() || (request.auth != null
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/members/$(request.auth.token.email)));
+    }
+
+    // Who else can get in: only the owner decides.
+    match /members/{email} {
+      allow read: if isMember();
+      allow write: if isOwner();
+    }
+
+    // Everything else: users/{space}/{table}/{id}
+    match /users/{space}/{table}/{id} {
+      allow read, write: if space == ownerId() && isMember();
     }
   }
 }

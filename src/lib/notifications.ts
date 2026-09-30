@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { deleteDoc, doc, setDoc } from 'firebase/firestore'
 import { useEffect } from 'react'
 import { DEFAULT_SETTINGS, type AgendaItem, type NotifySettings } from '../../shared/notify'
+import { OWNER } from './access'
 import { loadClassEvents } from './classes'
 import { db } from './db'
 import { API_URL, auth, firestore } from './firebase'
@@ -72,7 +73,7 @@ export async function enablePush() {
   const reg = await navigator.serviceWorker.ready
   const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(VAPID!) }))
   const json = sub.toJSON()
-  await setDoc(doc(firestore, 'users', user.uid, 'push', await subId(sub.endpoint)), {
+  await setDoc(doc(firestore, 'users', OWNER, 'push', await subId(sub.endpoint)), {
     endpoint: json.endpoint,
     keys: json.keys,
     device: isIOS() ? 'iPhone / iPad' : navigator.platform || 'Navegador',
@@ -84,7 +85,7 @@ export async function disablePush() {
   const sub = await currentSubscription()
   const user = auth?.currentUser
   if (!sub || !user || !firestore) return
-  await deleteDoc(doc(firestore, 'users', user.uid, 'push', await subId(sub.endpoint)))
+  await deleteDoc(doc(firestore, 'users', OWNER, 'push', await subId(sub.endpoint)))
   await sub.unsubscribe()
 }
 
@@ -99,7 +100,7 @@ export async function sendTestPush() {
 // ---------- Tasks the server should know about ----------
 
 /**
- * Keeps users/{uid}/server/tasks with the database rows that have a date, so the server can
+ * Keeps users/{space}/server/tasks with the database rows that have a date, so the server can
  * remind them without reading every page (Firestore's free plan counts each read).
  */
 export function useTaskSnapshot(uid: string | undefined) {

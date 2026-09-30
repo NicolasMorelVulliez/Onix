@@ -1,4 +1,4 @@
-import { getRedirectResult, signInWithPopup, signInWithRedirect } from 'firebase/auth'
+import { getRedirectResult, signInWithPopup, signInWithRedirect, signOut } from 'firebase/auth'
 import { useEffect, useState } from 'react'
 import { auth, googleProvider } from '../lib/firebase'
 
@@ -44,6 +44,27 @@ export function Login() {
           Esta es la cuenta de la app. Después, en Cuentas, podés vincular todas las cuentas de Google que quieras para
           Calendar y Drive.
         </p>
+      </div>
+    </div>
+  )
+}
+
+/** Signed in with a Google account that isn't one of Onix's. */
+export function NoAccess({ email }: { email: string | null }) {
+  return (
+    <div className="flex min-h-full items-center justify-center p-6">
+      <div className="w-full max-w-sm">
+        <div className="mb-6 flex items-center gap-2 text-xl font-semibold">
+          <img src="/icon.svg" alt="" className="size-9 rounded-[9px] shadow-sm" /> Onix
+        </div>
+        <p className="mb-1 font-medium">Esta cuenta no tiene acceso</p>
+        <p className="mb-5 text-sm text-muted">
+          {email ?? 'Esta cuenta'} no está habilitada para entrar a Onix. Si es tuya, entrá con tu cuenta principal y agregala en
+          Cuentas → Quién puede entrar.
+        </p>
+        <button type="button" onClick={() => signOut(auth!)} className="w-full rounded-md border border-line py-2 font-medium hover:bg-hover">
+          Entrar con otra cuenta
+        </button>
       </div>
     </div>
   )

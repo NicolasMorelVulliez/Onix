@@ -1,9 +1,9 @@
-import { env, GOOGLE_SCOPES, handle, HttpError, isAllowedOrigin, json, preflight, requireUser, signState } from '../_lib.js'
+import { env, GOOGLE_SCOPES, handle, HttpError, isAllowedOrigin, json, preflight, requireMember, signState } from '../_lib.js'
 
 /** Returns the Google consent URL to link one more account to the signed-in user. */
 export async function POST(request: Request) {
   return handle(request, async () => {
-    const uid = await requireUser(request)
+    const uid = await requireMember(request)
     const { returnTo, loginHint } = (await request.json()) as { returnTo?: string; loginHint?: string }
     if (!returnTo || !isAllowedOrigin(new URL(returnTo).origin)) throw new HttpError(400, 'Origen no permitido')
 

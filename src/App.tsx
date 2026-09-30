@@ -11,13 +11,14 @@ import { ImportPage } from './components/ImportPage'
 import { MailView } from './components/mail/MailView'
 import { NotebooksView } from './components/ink/NotebooksView'
 import { NotificationsPage } from './components/NotificationsPage'
-import { Login } from './components/Login'
+import { Login, NoAccess } from './components/Login'
 import { Splash } from './components/Splash'
 import { PageView } from './components/PageView'
 import { SearchPalette } from './components/SearchPalette'
 import { Sidebar } from './components/Sidebar'
 import { TodayView } from './components/today/TodayView'
 import { TrashView } from './components/TrashView'
+import { checkAccess, OWNER } from './lib/access'
 import { startInkSync } from './lib/ink/store'
 import { useTaskSnapshot } from './lib/notifications'
 import { startSync } from './lib/sync'
@@ -115,15 +116,29 @@ declare module '@tanstack/react-router' {
 export function App() {
   useApplyTheme()
   const [user, setUser] = useState<User | null | undefined>(auth ? undefined : null)
+  // Signed in isn't enough: only the owner and the accounts they added get in (see lib/access).
+  const [allowed, setAllowed] = useState<{ uid: string; ok: boolean } | null>(null)
 
   useEffect(() => (auth ? onAuthStateChanged(auth, setUser) : undefined), [])
+  useEffect(() => {
+    if (!user) return
+    let stop = false
+    checkAccess(user).then((ok) => !stop && setAllowed({ uid: user.uid, ok }))
+    return () => {
+      stop = true
+    }
+  }, [user])
 
-  const userId = user?.uid
-  useEffect(() => (userId ? startSync(userId) : undefined), [userId])
-  useEffect(() => (userId ? startInkSync() : undefined), [userId])
-  useTaskSnapshot(userId)
+  const access = user && allowed?.uid === user.uid ? allowed.ok : undefined
+  // Every allowed account works in the owner's space.
+  const space = access ? OWNER : undefined
+  useEffect(() => (space ? startSync(space) : undefined), [space])
+  useEffect(() => (space ? startInkSync() : undefined), [space])
+  useTaskSnapshot(space)
 
   if (auth && user === undefined) return <Splash />
   if (auth && !user) return <Login />
+  if (auth && user && access === undefined) return <Splash />
+  if (auth && user && !access) return <NoAccess email={user.email} />
   return <RouterProvider router={router} />
 }

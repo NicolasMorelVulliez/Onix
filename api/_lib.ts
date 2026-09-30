@@ -5,6 +5,7 @@
  * FIREBASE_PROJECT_ID, APP_ORIGINS (comma-separated, e.g. https://onix.web.app).
  */
 import { compactDecrypt, CompactEncrypt, createRemoteJWKSet, jwtVerify, SignJWT } from 'jose'
+import { normalizeEmail, OWNER } from '../shared/access.js'
 
 export const env = (name: string) => {
   const v = process.env[name]
@@ -50,8 +51,7 @@ const firebaseKeys = createRemoteJWKSet(
   new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'),
 )
 
-/** Returns the Firebase uid of the signed-in user making the request. */
-export async function requireUser(request: Request): Promise<string> {
+async function signedInUser(request: Request) {
   const token = request.headers.get('authorization')?.replace(/^Bearer /, '')
   if (!token) throw new HttpError(401, 'Falta iniciar sesión')
   const project = env('FIREBASE_PROJECT_ID')
@@ -60,10 +60,35 @@ export async function requireUser(request: Request): Promise<string> {
       issuer: `https://securetoken.google.com/${project}`,
       audience: project,
     })
-    return payload.sub!
+    return { uid: payload.sub!, email: typeof payload.email === 'string' ? payload.email : null, verified: payload.email_verified === true }
   } catch {
     throw new HttpError(401, 'Sesión inválida o vencida')
   }
+}
+
+const members = new Map<string, { ok: boolean; until: number }>()
+
+/** Whether the owner added this email (members/{email}); answers are kept for a minute. */
+async function isMember(email: string) {
+  const key = normalizeEmail(email)
+  const cached = members.get(key)
+  if (cached && cached.until > Date.now()) return cached.ok
+  // Loaded only here: most calls come from the owner and don't need Firestore.
+  const { adminDb } = await import('./_admin.js')
+  const ok = (await adminDb().doc(`members/${key}`).get()).exists
+  members.set(key, { ok, until: Date.now() + 60_000 })
+  return ok
+}
+
+/**
+ * Checks that the caller may use Onix (the owner, or an account the owner added) and returns
+ * the space everything belongs to: the owner's (see shared/access.ts).
+ */
+export async function requireMember(request: Request): Promise<string> {
+  const user = await signedInUser(request)
+  if (user.uid === OWNER) return OWNER
+  if (user.email && user.verified && (await isMember(user.email))) return OWNER
+  throw new HttpError(403, 'Esta cuenta no tiene acceso a Onix')
 }
 
 export class HttpError extends Error {

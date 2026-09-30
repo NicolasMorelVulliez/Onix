@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { db, getMeta, setMeta } from './db'
-import { API_URL } from './firebase'
+import { API_URL, auth } from './firebase'
 import { fetchGoogleEvents, type GoogleCalendar } from './google'
 import { parseIcs } from '../../shared/ics'
 import { schedulePush } from './sync'
@@ -80,9 +80,10 @@ export async function removeSource(id: string) {
 }
 
 async function downloadIcs(url: string) {
+  const token = await auth?.currentUser?.getIdToken()
   const res = await fetch(`${API_URL}/api/ics`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify({ url }),
   })
   if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? `Error ${res.status}`)

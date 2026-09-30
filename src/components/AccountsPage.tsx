@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { AlertCircle, ChevronRight, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { AlertCircle, ChevronRight, Loader2, Lock, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { addMember, listMembers, OWNER, removeMember, type Member } from '../lib/access'
 import { addSource, CATEGORIES, refreshSource, removeSource, setGoogleCalendar, updateSource, useCalendarStatus } from '../lib/calendar'
 import { db } from '../lib/db'
 import { auth } from '../lib/firebase'
@@ -69,6 +70,8 @@ export function AccountsPage() {
           Vinculá todas las cuentas de Google que quieras (EGS, personal…): calendarios, Drive, Gmail y Meet.
         </p>
         {message && <p className="mb-4 rounded-md bg-hover px-3 py-2 text-sm">{message}</p>}
+
+        {auth && <AccessSection />}
 
         <section className="mb-10">
           <div className="mb-2 flex items-center">
@@ -197,6 +200,95 @@ function AccountCard({ account, defaultOpen, onRelink }: { account: GoogleAccoun
         </div>
       )}
     </div>
+  )
+}
+
+/** Onix is private: the owner decides which other Google accounts can sign in. */
+function AccessSection() {
+  const isOwner = auth?.currentUser?.uid === OWNER
+  const [members, setMembers] = useState<Member[] | null>(null)
+  const [email, setEmail] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = () =>
+    listMembers()
+      .then(setMembers)
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+  useEffect(() => {
+    load()
+  }, [])
+
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      await addMember(email)
+      setEmail('')
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const remove = async (m: Member) => {
+    if (!confirm(`¿Sacarle el acceso a ${m.email}? No va a poder entrar más a Onix.`)) return
+    await removeMember(m.email).catch((e) => setError(e instanceof Error ? e.message : String(e)))
+    await load()
+  }
+
+  return (
+    <section className="mb-10">
+      <h2 className="mb-1 flex items-center gap-1.5 font-semibold">
+        <Lock size={15} /> Quién puede entrar a Onix
+      </h2>
+      <p className="mb-3 text-sm text-muted">
+        Onix es privado: solo entra tu cuenta principal y las cuentas de Google que agregues acá. Todas ven lo mismo. Cualquier otra
+        cuenta ve "Esta cuenta no tiene acceso".
+      </p>
+      <ul className="mb-2 divide-y divide-(--border) rounded-md border border-line text-sm">
+        <li className="flex items-center gap-2 px-3 py-2">
+          <span className="min-w-0 flex-1 truncate">{isOwner ? auth?.currentUser?.email : 'Tu cuenta principal'}</span>
+          <span className="text-xs text-muted">dueño</span>
+        </li>
+        {members?.map((m) => (
+          <li key={m.email} className="flex items-center gap-2 px-3 py-2">
+            <span className="min-w-0 flex-1 truncate">{m.email}</span>
+            {isOwner && (
+              <button type="button" title="Sacar acceso" onClick={() => remove(m)} className="rounded p-1 text-muted hover:bg-hover">
+                <Trash2 size={14} />
+              </button>
+            )}
+          </li>
+        ))}
+        {!members && !error && (
+          <li className="px-3 py-2">
+            <Loader2 size={14} className="animate-spin text-muted" />
+          </li>
+        )}
+      </ul>
+      {isOwner ? (
+        <form onSubmit={add} className="flex gap-2 text-sm">
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Otra cuenta tuya (mail de Google)"
+            className="min-w-0 flex-1 rounded-md border border-line bg-bg px-2 py-1.5 outline-none focus:border-accent"
+          />
+          <button disabled={busy} className="flex items-center gap-1 rounded-md bg-accent px-3 font-medium text-white disabled:opacity-60">
+            {busy ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Agregar
+          </button>
+        </form>
+      ) : (
+        <p className="text-xs text-muted">Solo la cuenta principal puede agregar o sacar cuentas.</p>
+      )}
+      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+    </section>
   )
 }
 

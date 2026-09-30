@@ -6,7 +6,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod'
 import * as z from 'zod/v4'
-import { handle, HttpError, json, preflight, requireUser } from '../_lib.js'
+import { handle, HttpError, json, preflight, requireMember } from '../_lib.js'
 
 const Schedule = z.object({
   subject: z.string().describe('Nombre de la materia tal como figura en el cronograma, o "" si no aparece'),
@@ -35,7 +35,7 @@ const MAX_BYTES = 4 * 1024 * 1024 // Vercel limits request bodies to 4.5 MB
 
 export async function POST(request: Request) {
   return handle(request, async () => {
-    await requireUser(request)
+    await requireMember(request)
     const body = (await request.json()) as {
       file?: string
       mediaType?: string

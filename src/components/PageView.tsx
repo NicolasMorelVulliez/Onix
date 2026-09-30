@@ -1,5 +1,6 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { SmilePlus, Trash2, Undo2 } from 'lucide-react'
+import { HardDrive, SmilePlus, Trash2, Undo2 } from 'lucide-react'
+import { DrivePanel, LinkDriveDialog } from './drive/DrivePanel'
 import { useEffect, useRef, useState } from 'react'
 import { useBreadcrumbs, usePage } from '../lib/hooks'
 import { purgePage, restorePage, setRowProp, updatePage } from '../lib/pages'
@@ -37,6 +38,7 @@ export function PageView({ pageId }: { pageId: string }) {
       <div className={page.kind === 'database' ? 'px-12 pb-24 max-md:px-4' : 'mx-auto max-w-3xl px-12 pb-40 max-md:px-4'}>
         <Header page={page} />
         {page.database_id && <RowProperties row={page} />}
+        {page.drive && <DrivePanel key={page.drive.folderId} page={page} />}
         {page.kind === 'database' ? <DatabaseView db={page} onOpenRow={openPage} /> : <Editor key={page.id} page={page} />}
       </div>
     </>
@@ -87,6 +89,7 @@ function TrashBanner({ page }: { page: Page }) {
 
 function Header({ page }: { page: Page }) {
   const emoji = usePopover()
+  const [linking, setLinking] = useState(false)
   const [title, setTitle] = useState(page.title)
   const ref = useRef<HTMLTextAreaElement>(null)
   useEffect(() => setTitle(page.title), [page.title])
@@ -104,19 +107,24 @@ function Header({ page }: { page: Page }) {
 
   return (
     <div className="group pt-16 max-md:pt-6">
-      {page.icon ? (
+      {page.icon && (
         <button type="button" onClick={(e) => emoji.toggle(e.currentTarget)} className="mb-2 rounded text-6xl leading-none hover:bg-hover">
           {page.icon}
         </button>
-      ) : (
-        <button
-          type="button"
-          onClick={(e) => emoji.toggle(e.currentTarget)}
-          className="mb-2 flex items-center gap-1 rounded px-1.5 py-1 text-sm text-muted opacity-0 hover:bg-hover group-hover:opacity-100 max-md:opacity-100"
-        >
-          <SmilePlus size={16} /> Agregar ícono
-        </button>
       )}
+      <div className="mb-2 flex flex-wrap items-center gap-1 text-sm text-muted opacity-0 group-hover:opacity-100 max-md:opacity-100">
+        {!page.icon && (
+          <button type="button" onClick={(e) => emoji.toggle(e.currentTarget)} className="flex items-center gap-1 rounded px-1.5 py-1 hover:bg-hover">
+            <SmilePlus size={16} /> Agregar ícono
+          </button>
+        )}
+        {!page.drive && (
+          <button type="button" onClick={() => setLinking(true)} className="flex items-center gap-1 rounded px-1.5 py-1 hover:bg-hover">
+            <HardDrive size={16} /> Vincular carpeta de Drive
+          </button>
+        )}
+      </div>
+      {linking && <LinkDriveDialog page={page} onClose={() => setLinking(false)} />}
       <Popover anchor={emoji.anchor} open={emoji.open} onClose={emoji.close}>
         <EmojiPicker
           onPick={(icon) => {

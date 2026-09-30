@@ -231,3 +231,36 @@ export function drivePreviewUrl(file: Pick<DriveFile, 'id' | 'webViewLink'>, ema
   const base = file.webViewLink?.match(/^https:\/\/(docs|drive)\.google\.com\/[^?#]*\/d\/[^/?#]+/)?.[0] ?? `https://drive.google.com/file/d/${file.id}`
   return `${base}/preview?authuser=${encodeURIComponent(email)}`
 }
+
+export const DRIVE_WRITE = 'https://www.googleapis.com/auth/drive'
+export const hasDriveWrite = (a: Pick<GoogleAccount, 'scopes'>) => !!a.scopes?.split(' ').includes(DRIVE_WRITE)
+
+export const isVideo = (f: Pick<DriveFile, 'mimeType'>) => f.mimeType.startsWith('video/')
+
+/** A subfolder by exact name (case-insensitive), or null. */
+export async function findFolder(accountId: string, parentId: string, name: string) {
+  const { files } = await listDrive(accountId, { kind: 'folder', id: parentId })
+  return files.find((f) => f.mimeType === FOLDER && f.name.trim().toLowerCase() === name.trim().toLowerCase()) ?? null
+}
+
+export async function createFolder(accountId: string, parentId: string, name: string) {
+  return gfetch<DriveFile>(accountId, `https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=${FILE_FIELDS}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name, mimeType: FOLDER, parents: [parentId] }),
+  })
+}
+
+/** The subfolder with that name, created if it doesn't exist yet. */
+export async function ensureFolder(accountId: string, parentId: string, name: string) {
+  return (await findFolder(accountId, parentId, name)) ?? (await createFolder(accountId, parentId, name))
+}
+
+export async function getFile(accountId: string, fileId: string) {
+  return gfetch<DriveFile>(accountId, `https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true&fields=${FILE_FIELDS}`)
+}
+
+/** Short-lived token for the service worker to stream a Drive video (see sw.ts). */
+export async function streamToken(accountId: string) {
+  return accessToken(accountId)
+}

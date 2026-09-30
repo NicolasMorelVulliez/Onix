@@ -63,6 +63,14 @@ export interface Page extends Syncable {
   is_template: 0 | 1
   /** Recurring task: when marked done, its date moves to the next occurrence. */
   repeat?: RepeatRule | null
+  /** Linked Google Drive folder: its files (and recordings) show inside the page. */
+  drive?: DriveLink | null
+}
+
+export interface DriveLink {
+  accountId: string
+  folderId: string
+  name: string
 }
 
 export interface RepeatRule {

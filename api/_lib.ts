@@ -118,7 +118,8 @@ export const GOOGLE_SCOPES = [
   'profile',
   'https://www.googleapis.com/auth/calendar.calendarlist.readonly',
   'https://www.googleapis.com/auth/calendar.events',
-  'https://www.googleapis.com/auth/drive.readonly',
+  // Read and organize Drive: create class folders, list files, stream recordings.
+  'https://www.googleapis.com/auth/drive',
   // Read, send, archive and mark mail as read (everything except permanent deletion).
   'https://www.googleapis.com/auth/gmail.modify',
 ]

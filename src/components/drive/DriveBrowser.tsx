@@ -19,9 +19,12 @@ const ROOT: Crumb = { name: 'Mi unidad', loc: { kind: 'folder', id: 'root' } }
 export function DriveBrowser({
   onSelect,
   selectedId,
+  onPickFolder,
 }: {
   onSelect: (file: DriveFile, accountId: string) => void
   selectedId?: string
+  /** Folder mode: shows "Vincular esta carpeta" for the folder being browsed. */
+  onPickFolder?: (folder: { id: string; name: string }, accountId: string) => void
 }) {
   const accounts = useLiveQuery(() => db.google_accounts.filter((a) => !a.deleted_at).toArray(), [])
   const [accountId, setAccountId] = useState<string | null>(null)
@@ -127,6 +130,15 @@ export function DriveBrowser({
       </div>
 
       <div className="min-w-0 flex-1">
+        {onPickFolder && loc.kind === 'folder' && (
+          <button
+            type="button"
+            onClick={() => onPickFolder({ id: loc.id, name: path.at(-1)!.name }, account.id)}
+            className="mb-2 w-full rounded-md bg-accent py-1.5 text-sm font-medium text-accent-fg"
+          >
+            Vincular "{path.at(-1)!.name}"
+          </button>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault()

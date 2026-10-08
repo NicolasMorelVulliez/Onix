@@ -75,6 +75,12 @@ describe('notebooks', () => {
     expect(base.getPage(0).node.get(PDFName.of('OnixPaper'))).toBeTruthy()
   })
 
+  it('keeps how the pen was set when the stroke was drawn', async () => {
+    const feel = { streamline: 0.12, smoothing: 0.16, thinning: 0.34 }
+    const back = await parsePdf(buffer(await buildPdf(null, [sheet({ strokes: [stroke({ feel })] })])))
+    expect(back.pages[0].strokes[0].feel).toEqual(feel)
+  })
+
   it('saves strokes as ink annotations other apps can show', async () => {
     const pdf = await buildPdf(null, [sheet({ strokes: [stroke()] })])
     const doc = await PDFDocument.load(pdf)

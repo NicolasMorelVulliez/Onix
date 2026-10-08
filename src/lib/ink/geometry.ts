@@ -1,18 +1,40 @@
 import { getStroke, type StrokeOptions } from 'perfect-freehand'
-import type { Paper, Stroke } from './types'
+import type { Feel, Paper, Stroke } from './types'
 
 // ---------- Stroke shape ----------
 
 export const HIGHLIGHT_OPACITY = 0.4
 
-function options(s: Pick<Stroke, 'tool' | 'size' | 'pressure'>, last: boolean): StrokeOptions {
-  return s.tool === 'highlighter'
-    ? { size: s.size, thinning: 0, smoothing: 0.5, streamline: 0.4, simulatePressure: false, last }
-    : { size: s.size, thinning: 0.5, smoothing: 0.6, streamline: 0.3, simulatePressure: !s.pressure, last }
+/** Strokes drawn before the pen settings existed keep looking the same. */
+const LEGACY: Record<Stroke['tool'], Feel> = {
+  pen: { streamline: 0.3, smoothing: 0.6, thinning: 0.5 },
+  highlighter: { streamline: 0.4, smoothing: 0.5, thinning: 0 },
+}
+
+/** What the settings panel shows (0–10, 0–1, 0–1) as perfect-freehand parameters. */
+export interface PenSettings {
+  stability: number
+  precision: number
+  sensitivity: number
+}
+export const DEFAULT_PEN: PenSettings = { stability: 2, precision: 0.8, sensitivity: 0.4 }
+export const DEFAULT_HIGHLIGHTER: PenSettings = { stability: 4, precision: 0.6, sensitivity: 0 }
+
+export function feelOf(p: PenSettings): Feel {
+  return {
+    streamline: Math.round(p.stability * 6) / 100,
+    smoothing: Math.round((1 - p.precision) * 80) / 100,
+    thinning: Math.round(p.sensitivity * 85) / 100,
+  }
+}
+
+function options(s: Pick<Stroke, 'tool' | 'size' | 'pressure' | 'feel'>, last: boolean): StrokeOptions {
+  const f = s.feel ?? LEGACY[s.tool]
+  return { size: s.size, ...f, simulatePressure: s.tool === 'pen' && !s.pressure && f.thinning > 0, last }
 }
 
 /** Filled outline of a stroke (perfect-freehand), as [x, y] points. */
-export function outline(s: Pick<Stroke, 'tool' | 'size' | 'pressure' | 'points'>, last = true): number[][] {
+export function outline(s: Pick<Stroke, 'tool' | 'size' | 'pressure' | 'points' | 'feel'>, last = true): number[][] {
   const input: number[][] = []
   const real = s.pressure && s.tool === 'pen'
   for (let i = 0; i < s.points.length; i += 3) input.push([s.points[i], s.points[i + 1], real ? s.points[i + 2] : 0.5])
@@ -62,7 +84,7 @@ export function strokePath(s: Stroke) {
  * Drops samples closer than `min` to the previous one: the pencil reports up to 240 per second,
  * and the curve looks the same with far fewer (smaller PDFs, lighter pages).
  */
-export function thinPoints(points: number[], min = 0.35): number[] {
+export function thinPoints(points: number[], min = 0.15): number[] {
   if (points.length <= 6) return points.map(r2)
   const out = [r2(points[0]), r2(points[1]), r2(points[2])]
   let lx = points[0]

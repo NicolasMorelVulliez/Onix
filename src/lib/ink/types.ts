@@ -18,6 +18,15 @@ export interface Stroke {
   pressure: boolean
   /** x, y, pressure, x, y, pressure… */
   points: number[]
+  /** How the pen felt when it was drawn (perfect-freehand); missing = the original defaults. */
+  feel?: Feel
+}
+
+/** perfect-freehand parameters: lag that steadies the line, corner rounding, pressure effect. */
+export interface Feel {
+  streamline: number
+  smoothing: number
+  thinning: number
 }
 
 export interface InkPage {

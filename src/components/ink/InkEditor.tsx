@@ -249,11 +249,27 @@ export function InkEditor({ docId, search }: { docId: string; search: InkSearch 
     }
   }
 
+  // Two-finger tap: undo; three: redo. A short label confirms it (there's nothing else to see).
+  const [flash, setFlash] = useState<string | null>(null)
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const gesture = (dir: 'undo' | 'redo') => {
+    const h = history.current
+    if (!h[dir].length) return
+    travel(dir)
+    setFlash(dir === 'undo' ? 'Deshacer' : 'Rehacer')
+    clearTimeout(flashTimer.current)
+    flashTimer.current = setTimeout(() => setFlash(null), 700)
+  }
+
   const back = () => (router.history.length > 1 ? router.history.back() : navigate({ to: '/' }))
   const h = history.current
 
   return (
-    <div className="fixed inset-0 z-[45] flex flex-col bg-bg">
+    // Like an app: nothing on this screen can be selected or long-pressed into a menu.
+    <div
+      className="fixed inset-0 z-[45] flex select-none flex-col bg-bg"
+      style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'transparent' } as React.CSSProperties}
+    >
       {phase === 'ready' && doc ? (
         <>
           <InkToolbar
@@ -280,11 +296,14 @@ export function InkEditor({ docId, search }: { docId: string; search: InkSearch 
               onCommit={commit}
               onPage={setPageIndex}
               onZoom={setZoom}
+              onUndo={() => gesture('undo')}
+              onRedo={() => gesture('redo')}
               apiRef={canvas}
             />
             <div className="pointer-events-none absolute inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] flex flex-col items-center gap-2">
               {selection && <SelectionBar onDelete={deleteSelection} onDuplicate={duplicate} onColor={recolor} />}
-              <div className="pointer-events-auto flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
+              {flash && <div className="rounded-full bg-black/70 px-3 py-1 text-sm font-medium text-white">{flash}</div>}
+              <div className="pointer-events-auto flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white">
                 <span>
                   {pageIndex + 1} / {pages.length}
                 </span>

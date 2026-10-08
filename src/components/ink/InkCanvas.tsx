@@ -1,8 +1,8 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { HIGHLIGHT_OPACITY, inLasso, moveStroke, outline, strokeBox, svgPath, thinPoints, touches, unionBox } from '../../lib/ink/geometry'
+import { feelOf, HIGHLIGHT_OPACITY, inLasso, moveStroke, outline, strokeBox, svgPath, thinPoints, touches, unionBox } from '../../lib/ink/geometry'
 import { useInkTools } from '../../lib/ink/tools'
-import type { InkPage, Pen, Stroke } from '../../lib/ink/types'
+import type { Feel, InkPage, Pen, Stroke } from '../../lib/ink/types'
 import { uid } from '../../lib/util'
 import { InkSheet, type Selection } from './InkSheet'
 
@@ -13,6 +13,20 @@ const MIN_ZOOM = 0.5
 const MAX_ZOOM = 5
 /** A finger right after the pencil is the palm resting on the screen. */
 const PALM_MS = 500
+/** Fingers have to move this much (px) before scrolling or zooming: a tap stays a tap. */
+const SLOP = 10
+/** Ruler size on screen (px) and how close to its edge a stroke has to start to follow it. */
+const RULER_LONG = 2600
+const RULER_WIDE = 76
+const RULER_REACH = 32
+
+export interface Ruler {
+  /** Center, relative to the canvas on screen. */
+  x: number
+  y: number
+  /** Radians. */
+  angle: number
+}
 
 export interface CanvasApi {
   scrollToPage: (index: number) => void
@@ -20,7 +34,20 @@ export interface CanvasApi {
 }
 
 type InkGesture =
-  | { kind: 'draw'; id: number; page: number; points: number[]; tool: Pen; color: string; size: number; pressure: boolean; started: number }
+  | {
+      kind: 'draw'
+      id: number
+      page: number
+      points: number[]
+      tool: Pen
+      color: string
+      size: number
+      feel: Feel
+      pressure: boolean
+      started: number
+      /** Following the ruler: the edge it sticks to (ruler y), or null. */
+      edge: number | null
+    }
   | { kind: 'erase'; id: number; page: number; before: InkPage[]; x: number; y: number }
   | { kind: 'lasso'; id: number; page: number; poly: number[] }
   | { kind: 'move'; id: number; page: number; x0: number; y0: number }
@@ -47,6 +74,8 @@ export function InkCanvas({
   onCommit,
   onPage,
   onZoom,
+  onUndo,
+  onRedo,
   apiRef,
 }: {
   pages: InkPage[]
@@ -59,6 +88,9 @@ export function InkCanvas({
   onCommit: (pages: InkPage[], before: InkPage[]) => void
   onPage: (index: number) => void
   onZoom: (zoom: number) => void
+  /** Two-finger tap / three-finger tap. */
+  onUndo: () => void
+  onRedo: () => void
   apiRef: RefObject<CanvasApi | null>
 }) {
   const scroller = useRef<HTMLDivElement>(null)
@@ -68,6 +100,12 @@ export function InkCanvas({
   const eraserDot = useRef<SVGCircleElement>(null)
   const [view, setView] = useState({ w: 0, h: 0, top: 0 })
   const [zoom, setZoom] = useState(1)
+  const rulerOn = useInkTools((t) => t.ruler)
+  const [ruler, setRuler] = useState<Ruler | null>(null)
+  // Shown in the middle of the screen the first time.
+  useEffect(() => {
+    if (rulerOn && !ruler && view.w) setRuler({ x: view.w / 2, y: view.h / 2, angle: 0 })
+  }, [rulerOn, ruler, view.w, view.h])
 
   const maxW = Math.max(1, ...pages.map((p) => p.width))
   const fit = view.w ? Math.min((view.w - 2 * PAD) / maxW, 1000 / maxW) : 1
@@ -86,8 +124,9 @@ export function InkCanvas({
   }, [pages, scale, view.w, maxW])
 
   // Handlers run outside React: they read the latest values from here.
-  const live = useRef({ pages, layout, selection, zoom, onPreview, onCommit, onSelection })
-  live.current = { pages, layout, selection, zoom, onPreview, onCommit, onSelection }
+  const shownRuler = rulerOn ? ruler : null
+  const live = useRef({ pages, layout, selection, zoom, onPreview, onCommit, onSelection, onUndo, onRedo, ruler: shownRuler })
+  live.current = { pages, layout, selection, zoom, onPreview, onCommit, onSelection, onUndo, onRedo, ruler: shownRuler }
   const anchor = useRef<{ docX: number; docY: number; mx: number; my: number } | null>(null)
   const clearLive = useRef(false)
 
@@ -171,6 +210,11 @@ export function InkCanvas({
     let inkByFinger = false
     /** Where the drawing pointer is, on screen. */
     let inkAt = { x: 0, y: 0 }
+    /** A touch that may still be a tap (two fingers: undo, three: redo). */
+    let tap: { t0: number; max: number; moved: boolean; starts: Map<number, { x: number; y: number }> } | null = null
+    /** Fingers holding the ruler, and where it was when they grabbed it. */
+    const rulerFingers = new Map<number, { x: number; y: number }>()
+    let rulerGrab: { ruler: Ruler; fingers: Map<number, { x: number; y: number }> } | null = null
 
     const tools = () => useInkTools.getState()
     const capture = (id: number) => {
@@ -201,12 +245,48 @@ export function InkCanvas({
       svg.setAttribute('viewBox', `0 0 ${p.width} ${p.height}`)
     }
 
+    /** Screen point → ruler coordinates (x along it, y across it, 0 = its middle). */
+    const toRuler = (r: Ruler, clientX: number, clientY: number) => {
+      const rect = el.getBoundingClientRect()
+      const px = clientX - rect.left - r.x
+      const py = clientY - rect.top - r.y
+      const c = Math.cos(r.angle)
+      const sn = Math.sin(r.angle)
+      return { lx: px * c + py * sn, ly: -px * sn + py * c }
+    }
+    const fromRuler = (r: Ruler, lx: number, ly: number) => {
+      const rect = el.getBoundingClientRect()
+      const c = Math.cos(r.angle)
+      const sn = Math.sin(r.angle)
+      return { clientX: rect.left + r.x + lx * c - ly * sn, clientY: rect.top + r.y + lx * sn + ly * c }
+    }
+    const onRuler = (clientX: number, clientY: number) => {
+      const r = live.current.ruler
+      if (!r) return false
+      const { lx, ly } = toRuler(r, clientX, clientY)
+      return Math.abs(lx) < RULER_LONG / 2 && Math.abs(ly) < RULER_WIDE / 2
+    }
+    /** The edge a stroke starting here should follow, if it starts next to one. */
+    const rulerEdge = (clientX: number, clientY: number) => {
+      const r = live.current.ruler
+      if (!r) return null
+      const { lx, ly } = toRuler(r, clientX, clientY)
+      if (Math.abs(lx) > RULER_LONG / 2 || Math.abs(Math.abs(ly) - RULER_WIDE / 2) > RULER_REACH) return null
+      return ly < 0 ? -RULER_WIDE / 2 : RULER_WIDE / 2
+    }
+    /** A pointer sample, moved onto the ruler's edge when the stroke follows it. */
+    const sample = (e: { clientX: number; clientY: number }, edge: number | null) => {
+      const r = live.current.ruler
+      if (edge === null || !r) return e
+      return fromRuler(r, toRuler(r, e.clientX, e.clientY).lx, edge)
+    }
+
     const pressureOf = (e: PointerEvent) => (e.pointerType === 'pen' ? clamp(e.pressure || 0.5, 0.05, 1) : 0.5)
 
     const paintStroke = () => {
       frame = 0
       if (ink?.kind !== 'draw') return
-      const d = svgPath(outline({ tool: ink.tool, size: ink.size, pressure: ink.pressure, points: predicted.length ? [...ink.points, ...predicted] : ink.points }, false))
+      const d = svgPath(outline({ tool: ink.tool, size: ink.size, feel: ink.feel, pressure: ink.pressure, points: predicted.length ? [...ink.points, ...predicted] : ink.points }, false))
       livePath.current!.setAttribute('d', d)
     }
 
@@ -235,7 +315,9 @@ export function InkCanvas({
 
     const startInk = (e: PointerEvent) => {
       inkAt = { x: e.clientX, y: e.clientY }
-      const hitPage = at(e)
+      const t = tools()
+      const edge = t.tool === 'pen' || t.tool === 'highlighter' ? rulerEdge(e.clientX, e.clientY) : null
+      const hitPage = at(sample(e, edge))
       const sel = live.current.selection
       // Dragging the selection moves it.
       if (sel && hitPage?.page === sel.page) {
@@ -247,7 +329,6 @@ export function InkCanvas({
       }
       if (sel) live.current.onSelection(null)
       if (!hitPage) return false
-      const t = tools()
       if (t.tool === 'eraser') {
         placeOverlay(hitPage.page)
         ink = { kind: 'erase', id: e.pointerId, page: hitPage.page, before: live.current.pages, x: hitPage.x, y: hitPage.y }
@@ -270,8 +351,10 @@ export function InkCanvas({
           tool: t.tool,
           color: pen.color,
           size: pen.size,
+          feel: feelOf(pen),
           pressure: e.pointerType === 'pen',
           started: performance.now(),
+          edge,
         }
         paintStroke()
       }
@@ -285,12 +368,12 @@ export function InkCanvas({
       const samples = events.length ? events : [e]
       if (ink.kind === 'draw') {
         for (const s of samples) {
-          const p = at(s, ink.page)!
+          const p = at(sample(s, ink.edge), ink.page)!
           ink.points.push(p.x, p.y, pressureOf(s))
         }
         predicted = []
         for (const s of (e.getPredictedEvents?.() ?? []).slice(0, 2)) {
-          const p = at(s, ink.page)!
+          const p = at(sample(s, ink.edge), ink.page)!
           predicted.push(p.x, p.y, pressureOf(s))
         }
         if (!frame) frame = requestAnimationFrame(paintStroke)
@@ -331,7 +414,7 @@ export function InkCanvas({
           livePath.current!.setAttribute('d', '')
           return
         }
-        const stroke: Stroke = { id: uid(), tool: g.tool, color: g.color, size: g.size, pressure: g.pressure, points: thinPoints(g.points) }
+        const stroke: Stroke = { id: uid(), tool: g.tool, color: g.color, size: g.size, feel: g.feel, pressure: g.pressure, points: thinPoints(g.points) }
         clearLive.current = true
         commit(
           replace(cur, g.page, (p) => ({ ...p, strokes: [...p.strokes, stroke] })),
@@ -390,7 +473,38 @@ export function InkCanvas({
       }
     }
 
+    // ---------- The ruler: one finger moves it, two turn it ----------
+
+    const grabRuler = () => {
+      const r = live.current.ruler
+      rulerGrab = r && rulerFingers.size ? { ruler: r, fingers: new Map(rulerFingers) } : null
+    }
+    const moveRuler = () => {
+      if (!rulerGrab) return
+      const grab = rulerGrab
+      const ids = [...grab.fingers.keys()].slice(0, 2)
+      const [a0, b0] = ids.map((id) => grab.fingers.get(id)!)
+      const [a1, b1] = ids.map((id) => rulerFingers.get(id) ?? grab.fingers.get(id)!)
+      const start = grab.ruler
+      if (!b0) return setRuler({ ...start, x: start.x + a1.x - a0.x, y: start.y + a1.y - a0.y })
+      let angle = start.angle + Math.atan2(b1.y - a1.y, b1.x - a1.x) - Math.atan2(b0.y - a0.y, b0.x - a0.x)
+      // Sticks to 0°, 45°, 90°… when close.
+      const step = Math.PI / 4
+      const near = Math.round(angle / step) * step
+      if (Math.abs(angle - near) < (2.5 * Math.PI) / 180) angle = near
+      setRuler({ x: start.x + (a1.x + b1.x - a0.x - b0.x) / 2, y: start.y + (a1.y + b1.y - a0.y - b0.y) / 2, angle })
+    }
+
     const moveTouch = () => {
+      if (tap && !tap.moved) {
+        for (const [id, p] of fingers) {
+          const s0 = tap.starts.get(id)
+          if (s0 && Math.hypot(p.x - s0.x, p.y - s0.y) > SLOP) tap.moved = true
+        }
+        if (!tap.moved) return
+        // Starts from here, so the page doesn't jump by the slop.
+        startTouchGesture()
+      }
       const pts = [...fingers.values()]
       if (touch?.kind === 'pan' && pts.length === 1) {
         const now = performance.now()
@@ -404,8 +518,16 @@ export function InkCanvas({
         const [a, b] = pts
         const r = el.getBoundingClientRect()
         const z = clamp((touch.zoom * Math.hypot(a.x - b.x, a.y - b.y)) / touch.dist, MIN_ZOOM, MAX_ZOOM)
-        anchor.current = { docX: touch.docX, docY: touch.docY, mx: (a.x + b.x) / 2 - r.left, my: (a.y + b.y) / 2 - r.top }
-        setZoom(z)
+        const a2 = { docX: touch.docX, docY: touch.docY, mx: (a.x + b.x) / 2 - r.left, my: (a.y + b.y) / 2 - r.top }
+        if (Math.abs(z - live.current.zoom) < 1e-3) {
+          // Same zoom (two fingers just dragging): React won't re-render, so scroll right here.
+          const L = live.current.layout
+          el.scrollLeft = a2.docX * L.scale + L.width / 2 - a2.mx
+          el.scrollTop = a2.docY * L.scale + PAD - a2.my
+        } else {
+          anchor.current = a2
+          setZoom(z)
+        }
       }
     }
 
@@ -417,6 +539,7 @@ export function InkCanvas({
         // The palm may have started a scroll before the pencil touched the screen.
         fingers.clear()
         touch = null
+        tap = null
         stopMomentum()
       }
       if (e.pointerType === 'touch') {
@@ -433,7 +556,13 @@ export function InkCanvas({
           }
           livePath.current!.setAttribute('d', '')
           fingers.set(ink.id, inkAt)
+          tap = { t0: ink.started, max: 1, moved: false, starts: new Map([[ink.id, inkAt]]) }
           ink = null
+        } else if (rulerFingers.size || (!fingers.size && onRuler(e.clientX, e.clientY))) {
+          rulerFingers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+          capture(e.pointerId)
+          grabRuler()
+          return
         } else if (tools().fingerDraws && !fingers.size) {
           if (startInk(e)) {
             inkByFinger = true
@@ -443,7 +572,12 @@ export function InkCanvas({
           return
         }
         stopMomentum()
+        if (!fingers.size) tap = { t0: performance.now(), max: 0, moved: false, starts: new Map() }
         fingers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+        if (tap) {
+          tap.starts.set(e.pointerId, { x: e.clientX, y: e.clientY })
+          tap.max = Math.max(tap.max, fingers.size)
+        }
         capture(e.pointerId)
         startTouchGesture()
         return
@@ -461,6 +595,9 @@ export function InkCanvas({
       if (ink && e.pointerId === ink.id) {
         e.preventDefault()
         moveInk(e)
+      } else if (rulerFingers.has(e.pointerId)) {
+        rulerFingers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+        moveRuler()
       } else if (fingers.has(e.pointerId)) {
         fingers.set(e.pointerId, { x: e.clientX, y: e.clientY })
         moveTouch()
@@ -471,11 +608,20 @@ export function InkCanvas({
       if (e.pointerType === 'pen') lastPen = performance.now()
       if (ignored.delete(e.pointerId)) return
       if (ink && e.pointerId === ink.id) return endInk(e.type === 'pointercancel')
+      if (rulerFingers.delete(e.pointerId)) return grabRuler()
       if (!fingers.delete(e.pointerId)) return
       if (fingers.size) return startTouchGesture()
       const g = touch
       touch = null
-      if (g?.kind === 'pan' && performance.now() - g.t < 80) glide(g.vx, g.vy)
+      const t = tap
+      tap = null
+      // A quick tap with two fingers undoes, with three redoes (like GoodNotes or Procreate).
+      if (t && !t.moved && e.type === 'pointerup' && performance.now() - t.t0 < 350 && t.max >= 2) {
+        if (t.max === 2) live.current.onUndo()
+        else live.current.onRedo()
+        return
+      }
+      if (g?.kind === 'pan' && t?.moved && performance.now() - g.t < 80) glide(g.vx, g.vy)
     }
 
     // Trackpad and mouse: ctrl/⌘ + wheel (or a Mac trackpad pinch) zooms, the rest scrolls normally.
@@ -526,35 +672,63 @@ export function InkCanvas({
   }, [])
 
   return (
-    <div
-      ref={scroller}
-      className="absolute inset-0 overflow-auto overscroll-none bg-[#e8e8e6] select-none dark:bg-[#161616]"
-      style={{ touchAction: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
-    >
-      <div className="relative" style={{ width: layout.width, height: layout.height }}>
-        {pages.map((p, i) => {
-          const b = layout.boxes[i]
-          return (
-            <InkSheet
-              key={p.key}
-              page={p}
-              x={b.x}
-              y={b.y}
-              w={b.w}
-              h={b.h}
-              scale={scale}
-              visible={view.w > 0 && i >= first && i <= lastVisible}
-              pdf={pdf}
-              selection={selection?.page === i ? selection : null}
-            />
-          )
-        })}
-        <svg ref={overlay} preserveAspectRatio="none" className="pointer-events-none absolute" style={{ display: 'none' }}>
-          <path ref={livePath} />
-          <polyline ref={lassoLine} fill="rgba(0,122,255,0.08)" stroke="#007aff" strokeWidth={1.2} strokeDasharray="5 4" vectorEffect="non-scaling-stroke" />
-          <circle ref={eraserDot} r={0} fill="rgba(0,0,0,0.06)" stroke="rgba(0,0,0,0.35)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-        </svg>
+    <>
+      <div
+        ref={scroller}
+        className="absolute inset-0 overflow-auto overscroll-none bg-[#e8e8e6] select-none dark:bg-[#161616]"
+        style={{ touchAction: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
+      >
+        <div className="relative" style={{ width: layout.width, height: layout.height }}>
+          {pages.map((p, i) => {
+            const b = layout.boxes[i]
+            return (
+              <InkSheet
+                key={p.key}
+                page={p}
+                x={b.x}
+                y={b.y}
+                w={b.w}
+                h={b.h}
+                scale={scale}
+                visible={view.w > 0 && i >= first && i <= lastVisible}
+                pdf={pdf}
+                selection={selection?.page === i ? selection : null}
+              />
+            )
+          })}
+          <svg ref={overlay} preserveAspectRatio="none" className="pointer-events-none absolute" style={{ display: 'none' }}>
+            <path ref={livePath} />
+            <polyline ref={lassoLine} fill="rgba(0,122,255,0.08)" stroke="#007aff" strokeWidth={1.2} strokeDasharray="5 4" vectorEffect="non-scaling-stroke" />
+            <circle ref={eraserDot} r={0} fill="rgba(0,0,0,0.06)" stroke="rgba(0,0,0,0.35)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          </svg>
+        </div>
       </div>
+      {shownRuler && <RulerView ruler={shownRuler} />}
+    </>
+  )
+}
+
+const TICKS = 'repeating-linear-gradient(90deg, rgba(0,0,0,0.55) 0 1px, transparent 1px 50px)'
+const SMALL_TICKS = 'repeating-linear-gradient(90deg, rgba(0,0,0,0.35) 0 1px, transparent 1px 10px)'
+
+/** The ruler: fingers move and turn it, the pencil draws straight along its edges. */
+function RulerView({ ruler }: { ruler: Ruler }) {
+  const deg = Math.round(((((ruler.angle * 180) / Math.PI) % 180) + 180) % 180)
+  return (
+    <div
+      className="pointer-events-none absolute left-0 top-0 flex items-center justify-center rounded-[3px] border border-black/25 shadow-[0_2px_10px_rgba(0,0,0,0.18)]"
+      style={{
+        width: RULER_LONG,
+        height: RULER_WIDE,
+        transform: `translate(${ruler.x - RULER_LONG / 2}px, ${ruler.y - RULER_WIDE / 2}px) rotate(${ruler.angle}rad)`,
+        backgroundColor: 'rgba(236,236,236,0.8)',
+        backgroundImage: `${TICKS}, ${SMALL_TICKS}, ${TICKS}, ${SMALL_TICKS}`,
+        backgroundSize: '100% 16px, 100% 8px, 100% 16px, 100% 8px',
+        backgroundPosition: 'top, top, bottom, bottom',
+        backgroundRepeat: 'no-repeat',
+      }}
+    >
+      <span className="rounded-full bg-black/60 px-2 py-0.5 text-xs font-medium text-white">{deg}°</span>
     </div>
   )
 }

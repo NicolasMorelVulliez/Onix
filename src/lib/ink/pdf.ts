@@ -94,6 +94,8 @@ interface StoredStroke {
   s: number
   /** Pressure per point, when the pencil gave it. */
   p?: number[]
+  /** Feel: streamline, smoothing, thinning. */
+  f?: [number, number, number]
 }
 
 function readStroke(annot: PDFDict, toView: Matrix, id: string): Stroke | null {
@@ -123,6 +125,7 @@ function readStroke(annot: PDFDict, toView: Matrix, id: string): Stroke | null {
     size: Number(data.s) || 2,
     pressure: !!data.p,
     points,
+    ...(Array.isArray(data.f) && data.f.length === 3 ? { feel: { streamline: data.f[0], smoothing: data.f[1], thinning: data.f[2] } } : {}),
   }
 }
 
@@ -244,7 +247,13 @@ function addStroke(doc: PDFDocument, page: PDFPage, annots: PDFArray, stroke: St
     line.push(r2(x), r2(y))
     pressures.push(Math.round(stroke.points[i + 2] * 100) / 100)
   }
-  const data: StoredStroke = { t: stroke.tool, c: stroke.color, s: stroke.size, ...(stroke.pressure ? { p: pressures } : {}) }
+  const data: StoredStroke = {
+    t: stroke.tool,
+    c: stroke.color,
+    s: stroke.size,
+    ...(stroke.pressure ? { p: pressures } : {}),
+    ...(stroke.feel ? { f: [stroke.feel.streamline, stroke.feel.smoothing, stroke.feel.thinning] as [number, number, number] } : {}),
+  }
 
   const annot = ctx.obj({
     Type: 'Annot',

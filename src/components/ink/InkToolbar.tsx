@@ -14,6 +14,8 @@ import {
   Lasso,
   Loader2,
   PenLine,
+  Ruler,
+  SlidersHorizontal,
   Redo2,
   Share,
   Smartphone,
@@ -22,10 +24,10 @@ import {
   UploadCloud,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { PAPERS } from '../../lib/ink/geometry'
+import { DEFAULT_HIGHLIGHTER, DEFAULT_PEN, feelOf, outline, PAPERS, svgPath } from '../../lib/ink/geometry'
 import type { InkStatus } from '../../lib/ink/store'
-import { HIGHLIGHT_COLORS, PEN_COLORS, SIZES, useInkTools } from '../../lib/ink/tools'
-import type { Paper, Tool } from '../../lib/ink/types'
+import { HIGHLIGHT_COLORS, PEN_COLORS, SIZE_RANGE, SIZES, useInkTools, type PenState } from '../../lib/ink/tools'
+import type { Paper, Pen, Tool } from '../../lib/ink/types'
 import { cx } from '../../lib/util'
 import { MenuItem, Popover, usePopover } from '../ui'
 
@@ -93,6 +95,7 @@ export function InkToolbar({
   const t = useInkTools()
   const add = usePopover()
   const more = usePopover()
+  const feel = usePopover()
   const pen = t.tool === 'highlighter' ? t.highlighter : t.pen
   const colors = t.tool === 'highlighter' ? HIGHLIGHT_COLORS : PEN_COLORS
   const sizes = t.tool === 'eraser' ? SIZES.eraser : t.tool === 'highlighter' ? SIZES.highlighter : SIZES.pen
@@ -103,7 +106,8 @@ export function InkToolbar({
     t.tool === 'eraser' ? t.set({ eraser: v }) : t.tool === 'highlighter' ? t.set({ highlighter: { ...t.highlighter, size: v } }) : t.set({ pen: { ...t.pen, size: v } })
 
   return (
-    <header className="z-10 flex flex-none flex-wrap items-center gap-x-1 gap-y-1 border-b border-line bg-elevated/95 px-2 pb-1.5 pt-[max(0.375rem,env(safe-area-inset-top))] backdrop-blur">
+    // Solid background: Safari on the iPad draws translucent, blurred bars out of focus over a zoomed page.
+    <header className="z-10 flex flex-none flex-wrap items-center gap-x-1 gap-y-1 border-b border-line bg-bg px-2 pb-1.5 pt-[max(0.375rem,env(safe-area-inset-top))]">
       <div className="flex min-w-0 flex-1 basis-32 items-center gap-1">
         <button type="button" onClick={onBack} aria-label="Volver" className={btn}>
           <ChevronLeft size={22} />
@@ -120,12 +124,26 @@ export function InkToolbar({
             title={tool.name}
             aria-label={tool.name}
             aria-pressed={t.tool === tool.id}
-            onClick={() => t.set({ tool: tool.id })}
+            onClick={(e) => {
+              // Tapping the pen (or highlighter) that's already in use opens its settings.
+              if (t.tool === tool.id && (tool.id === 'pen' || tool.id === 'highlighter')) feel.toggle(e.currentTarget)
+              else t.set({ tool: tool.id })
+            }}
             className={cx(btn, t.tool === tool.id && 'bg-accent/15 text-accent')}
           >
             {tool.icon}
           </button>
         ))}
+        <button
+          type="button"
+          title="Regla"
+          aria-label="Regla"
+          aria-pressed={t.ruler}
+          onClick={() => t.set({ ruler: !t.ruler })}
+          className={cx(btn, t.ruler && 'bg-accent/15 text-accent')}
+        >
+          <Ruler size={19} />
+        </button>
         <span className="mx-0.5 h-6 w-px flex-none bg-(--border)" />
         {t.tool !== 'eraser' &&
           colors.map((c) => (
@@ -138,13 +156,19 @@ export function InkToolbar({
           ))}
         {t.tool !== 'lasso' && (
           <>
-            <span className="mx-0.5 h-6 w-px flex-none bg-(--border)" />
+            <span className={cx('mx-0.5 h-6 w-px flex-none bg-(--border)', t.tool !== 'eraser' && 'max-lg:hidden')} />
             {sizes.map((v, i) => (
-              <button key={v} type="button" aria-label={`Grosor ${i + 1}`} onClick={() => setSize(v)} className={cx(btn, size === v && 'bg-hover')}>
+              // Upright iPad: no room for them; the thickness is in the pen settings.
+              <button key={v} type="button" aria-label={`Grosor ${i + 1}`} onClick={() => setSize(v)} className={cx(btn, size === v && 'bg-hover', t.tool !== 'eraser' && 'max-lg:hidden')}>
                 <span className="rounded-full bg-fg/80" style={{ width: 4 + i * 4, height: 4 + i * 4 }} />
               </button>
             ))}
           </>
+        )}
+        {(t.tool === 'pen' || t.tool === 'highlighter') && (
+          <button type="button" title="Ajustes de la lapicera" aria-label="Ajustes de la lapicera" onClick={(e) => feel.toggle(e.currentTarget)} className={btn}>
+            <SlidersHorizontal size={18} />
+          </button>
         )}
       </div>
 
@@ -163,7 +187,11 @@ export function InkToolbar({
         </button>
       </div>
 
-      <Popover anchor={add.anchor} open={add.open} onClose={add.close} align="end" className="w-56">
+      <Popover anchor={feel.anchor} open={feel.open && (t.tool === 'pen' || t.tool === 'highlighter')} onClose={feel.close} className="w-80 select-none">
+        {(t.tool === 'pen' || t.tool === 'highlighter') && <PenSettingsPanel tool={t.tool} />}
+      </Popover>
+
+      <Popover anchor={add.anchor} open={add.open} onClose={add.close} align="end" className="w-56 select-none">
         <p className="px-2 py-1 text-xs text-muted">Hoja nueva después de esta</p>
         {PAPERS.map((p) => (
           <MenuItem
@@ -180,7 +208,7 @@ export function InkToolbar({
         ))}
       </Popover>
 
-      <Popover anchor={more.anchor} open={more.open} onClose={more.close} align="end" className="w-64">
+      <Popover anchor={more.anchor} open={more.open} onClose={more.close} align="end" className="w-64 select-none">
         <MenuItem icon={t.fingerDraws ? <Check size={15} /> : <Hand size={15} />} onClick={() => t.set({ fingerDraws: !t.fingerDraws })}>
           Dibujar con el dedo {t.fingerDraws ? '(activado)' : ''}
         </MenuItem>
@@ -253,6 +281,79 @@ export function SelectionBar({ onDelete, onDuplicate, onColor }: { onDelete: () 
       <button type="button" title="Borrar" aria-label="Borrar" onClick={onDelete} className={cx(btn, 'text-red-600 dark:text-red-400')}>
         <Trash2 size={17} />
       </button>
+    </div>
+  )
+}
+
+/** A wavy line drawn with the current settings, getting harder and softer like a real hand. */
+const SAMPLE: number[] = []
+for (let i = 0; i <= 60; i++) {
+  const x = 8 + i * 1.73
+  SAMPLE.push(x, 15 - Math.sin((i / 60) * Math.PI * 2) * 8, 0.25 + 0.6 * Math.sin((i / 60) * Math.PI))
+}
+
+function Slider({ label, value, min, max, step, shown, onChange }: { label: string; value: number; min: number; max: number; step: number; shown: string; onChange: (v: number) => void }) {
+  return (
+    <label className="block">
+      <span className="mb-1 flex text-sm">
+        <span className="flex-1">{label}</span>
+        <span className="tabular-nums text-muted">{shown}</span>
+      </span>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full accent-(--accent)" />
+    </label>
+  )
+}
+
+/** Stability, precision, pressure sensitivity and thickness of the pen (or highlighter). */
+function PenSettingsPanel({ tool }: { tool: Pen }) {
+  const t = useInkTools()
+  const pen = t[tool]
+  const set = (patch: Partial<PenState>) => t.set({ [tool]: { ...pen, ...patch } })
+  const [lo, hi] = SIZE_RANGE[tool]
+  const stepSize = tool === 'pen' ? 0.05 : 0.5
+  const preview = svgPath(outline({ tool, size: pen.size * 2, feel: feelOf(pen), pressure: true, points: SAMPLE }))
+  const reset = () => set({ ...(tool === 'pen' ? DEFAULT_PEN : DEFAULT_HIGHLIGHTER), size: SIZES[tool][1] })
+
+  return (
+    <div className="space-y-3 p-2">
+      <div className="flex items-center">
+        <span className="flex-1 font-semibold">{tool === 'pen' ? 'Lapicera' : 'Resaltador'}</span>
+        <button type="button" onClick={reset} className="rounded-md bg-hover px-2 py-0.5 text-xs">
+          Restablecer
+        </button>
+      </div>
+      <svg viewBox="0 0 120 30" className="h-20 w-full rounded-lg bg-white">
+        <path d={preview} fill={pen.color} fillOpacity={tool === 'highlighter' ? 0.4 : 1} />
+      </svg>
+      <Slider label="Estabilidad" value={pen.stability} min={0} max={10} step={1} shown={String(pen.stability)} onChange={(v) => set({ stability: v })} />
+      <Slider label="Precisión" value={pen.precision} min={0} max={1} step={0.05} shown={`${Math.round(pen.precision * 100)}%`} onChange={(v) => set({ precision: v })} />
+      {tool === 'pen' && (
+        <Slider
+          label="Sensibilidad a la presión"
+          value={pen.sensitivity}
+          min={0}
+          max={1}
+          step={0.05}
+          shown={`${Math.round(pen.sensitivity * 100)}%`}
+          onChange={(v) => set({ sensitivity: v })}
+        />
+      )}
+      <div>
+        <span className="mb-1 flex items-center text-sm">
+          <span className="flex-1">Grosor</span>
+          <button type="button" aria-label="Más fino" onClick={() => set({ size: Math.max(lo, Math.round((pen.size - stepSize) * 100) / 100) })} className="rounded-full px-2 text-muted hover:bg-hover">
+            −
+          </button>
+          <span className="w-10 text-center tabular-nums text-muted">{pen.size.toFixed(2)}</span>
+          <button type="button" aria-label="Más grueso" onClick={() => set({ size: Math.min(hi, Math.round((pen.size + stepSize) * 100) / 100) })} className="rounded-full px-2 text-muted hover:bg-hover">
+            +
+          </button>
+        </span>
+        <input type="range" min={lo} max={hi} step={stepSize} value={pen.size} onChange={(e) => set({ size: Number(e.target.value) })} className="w-full accent-(--accent)" />
+      </div>
+      <p className="text-xs leading-snug text-muted">
+        Estabilidad alta: líneas más suaves pero el trazo sigue al lápiz con algo de retraso. Precisión alta: respeta las esquinas y los detalles (letras chicas).
+      </p>
     </div>
   )
 }

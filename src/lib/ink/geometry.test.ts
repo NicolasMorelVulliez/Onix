@@ -16,7 +16,7 @@ describe('strokes', () => {
   })
 
   it('drops samples that are too close, keeping the last one', () => {
-    const dense = line(0, 0, 10, 0, 100)
+    const dense = line(0, 0, 10, 0, 400)
     const thin = thinPoints(dense.points)
     expect(thin.length).toBeLessThan(dense.points.length / 2)
     expect(thin.slice(-3, -1)).toEqual([10, 0])

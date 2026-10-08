@@ -51,18 +51,21 @@ function Layout() {
 }
 
 // Unknown addresses (old links, leftovers from a sign-in) go home instead of a blank screen.
-const rootRoute = createRootRoute({ component: Layout, notFoundComponent: () => <Navigate to="/" replace /> })
-const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: Home })
-const pageRoute = createRoute({ getParentRoute: () => rootRoute, path: '/p/$pageId', component: PageRoute })
-const trashRoute = createRoute({ getParentRoute: () => rootRoute, path: '/trash', component: TrashView })
-const calendarRoute = createRoute({ getParentRoute: () => rootRoute, path: '/calendar', component: CalendarView })
-const driveRoute = createRoute({ getParentRoute: () => rootRoute, path: '/drive', component: DriveView })
-const accountsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/accounts', component: AccountsPage })
-const mailRoute = createRoute({ getParentRoute: () => rootRoute, path: '/mail', component: MailView })
-const notificationsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/notifications', component: NotificationsPage })
-const todayRoute = createRoute({ getParentRoute: () => rootRoute, path: '/today', component: TodayView })
-const importRoute = createRoute({ getParentRoute: () => rootRoute, path: '/import', component: ImportPage })
-const notebooksRoute = createRoute({ getParentRoute: () => rootRoute, path: '/notebooks', component: NotebooksView })
+const rootRoute = createRootRoute({ component: Outlet, notFoundComponent: () => <Navigate to="/" replace /> })
+// Every screen with the sidebar. The notebook isn't one: it's a full screen of its own (with the
+// sidebar and its scrolling area underneath, Safari on the iPad drew the notebook's bar blurry).
+const appRoute = createRoute({ getParentRoute: () => rootRoute, id: 'app', component: Layout })
+const homeRoute = createRoute({ getParentRoute: () => appRoute, path: '/', component: Home })
+const pageRoute = createRoute({ getParentRoute: () => appRoute, path: '/p/$pageId', component: PageRoute })
+const trashRoute = createRoute({ getParentRoute: () => appRoute, path: '/trash', component: TrashView })
+const calendarRoute = createRoute({ getParentRoute: () => appRoute, path: '/calendar', component: CalendarView })
+const driveRoute = createRoute({ getParentRoute: () => appRoute, path: '/drive', component: DriveView })
+const accountsRoute = createRoute({ getParentRoute: () => appRoute, path: '/accounts', component: AccountsPage })
+const mailRoute = createRoute({ getParentRoute: () => appRoute, path: '/mail', component: MailView })
+const notificationsRoute = createRoute({ getParentRoute: () => appRoute, path: '/notifications', component: NotificationsPage })
+const todayRoute = createRoute({ getParentRoute: () => appRoute, path: '/today', component: TodayView })
+const importRoute = createRoute({ getParentRoute: () => appRoute, path: '/import', component: ImportPage })
+const notebooksRoute = createRoute({ getParentRoute: () => appRoute, path: '/notebooks', component: NotebooksView })
 const inkRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/ink/$docId',
@@ -73,18 +76,20 @@ const inkRoute = createRoute({
   component: InkRoute,
 })
 const routeTree = rootRoute.addChildren([
-  homeRoute,
-  importRoute,
-  todayRoute,
-  pageRoute,
-  trashRoute,
-  calendarRoute,
-  driveRoute,
-  accountsRoute,
-  mailRoute,
-  notificationsRoute,
+  appRoute.addChildren([
+    homeRoute,
+    importRoute,
+    todayRoute,
+    pageRoute,
+    trashRoute,
+    calendarRoute,
+    driveRoute,
+    accountsRoute,
+    mailRoute,
+    notificationsRoute,
+    notebooksRoute,
+  ]),
   inkRoute,
-  notebooksRoute,
 ])
 
 function PageRoute() {

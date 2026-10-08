@@ -674,8 +674,17 @@ export function InkCanvas({
       }
     }
     const noMenu = (e: Event) => e.preventDefault()
+    // iPadOS reads the pencil as Scribble (handwriting into text) or as a text selection unless the
+    // touches' default action is cancelled: it held back or cut strokes and popped "Copiar / Traducir".
+    // Pointer events (what draws) still arrive; nothing here needs taps or clicks.
+    const noNative = (e: TouchEvent) => {
+      if (e.cancelable) e.preventDefault()
+    }
+    const clearSelection = () => window.getSelection()?.removeAllRanges()
 
     el.addEventListener('pointerdown', down)
+    el.addEventListener('pointerdown', clearSelection)
+    for (const t of ['touchstart', 'touchmove', 'touchend'] as const) el.addEventListener(t, noNative, { passive: false })
     el.addEventListener('pointermove', move)
     el.addEventListener('pointerup', up)
     el.addEventListener('pointercancel', up)
@@ -684,6 +693,8 @@ export function InkCanvas({
     for (const t of ['gesturestart', 'gesturechange', 'gestureend']) el.addEventListener(t, gesture)
     return () => {
       el.removeEventListener('pointerdown', down)
+      el.removeEventListener('pointerdown', clearSelection)
+      for (const t of ['touchstart', 'touchmove', 'touchend'] as const) el.removeEventListener(t, noNative)
       el.removeEventListener('pointermove', move)
       el.removeEventListener('pointerup', up)
       el.removeEventListener('pointercancel', up)

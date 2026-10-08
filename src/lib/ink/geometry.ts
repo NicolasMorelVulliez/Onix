@@ -22,7 +22,8 @@ export const DEFAULT_HIGHLIGHTER: PenSettings = { stability: 4, precision: 0.6, 
 
 export function feelOf(p: PenSettings): Feel {
   return {
-    streamline: Math.round(p.stability * 6) / 100,
+    // Kept low: more streamline steadies the line but leaves it behind the pencil tip.
+    streamline: Math.round(p.stability * 4) / 100,
     smoothing: Math.round((1 - p.precision) * 80) / 100,
     thinning: Math.round(p.sensitivity * 85) / 100,
   }

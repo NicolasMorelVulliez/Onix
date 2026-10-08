@@ -95,7 +95,8 @@ export function InkCanvas({
 }) {
   const scroller = useRef<HTMLDivElement>(null)
   const overlay = useRef<SVGSVGElement>(null)
-  const livePath = useRef<SVGPathElement>(null)
+  /** The stroke being drawn, painted on a canvas the size of the screen (fast at any zoom). */
+  const liveCanvas = useRef<HTMLCanvasElement>(null)
   const lassoLine = useRef<SVGPolylineElement>(null)
   const eraserDot = useRef<SVGCircleElement>(null)
   const [view, setView] = useState({ w: 0, h: 0, top: 0 })
@@ -130,21 +131,27 @@ export function InkCanvas({
   const anchor = useRef<{ docX: number; docY: number; mx: number; my: number } | null>(null)
   const clearLive = useRef(false)
 
-  // Zooming keeps the point under the fingers (or the cursor) still.
+  const sized = useRef({ scale: 0, width: 0 })
+
+  // Zooming (or turning the iPad) keeps the point under the fingers still. Only when the size
+  // really changed: an anchor left over (say, the toolbar got taller) must not move the page later.
   useLayoutEffect(() => {
     const a = anchor.current
-    const el = scroller.current
-    if (!a || !el) return
     anchor.current = null
+    const before = sized.current
+    sized.current = { scale: layout.scale, width: layout.width }
+    const el = scroller.current
+    if (!a || !el || (before.scale === layout.scale && before.width === layout.width)) return
     el.scrollLeft = a.docX * layout.scale + layout.width / 2 - a.mx
     el.scrollTop = a.docY * layout.scale + PAD - a.my
   }, [layout])
 
-  // The stroke drawn in the overlay is now a real stroke on the page.
+  // The stroke drawn on the live canvas is now a real stroke on the page.
   useLayoutEffect(() => {
     if (!clearLive.current) return
     clearLive.current = false
-    livePath.current?.setAttribute('d', '')
+    const c = liveCanvas.current
+    c?.getContext('2d')?.clearRect(0, 0, c.width, c.height)
   }, [pages])
 
   useEffect(() => onZoom(zoom), [zoom, onZoom])
@@ -184,6 +191,12 @@ export function InkCanvas({
         anchor.current = { docX: (el.scrollLeft + el.clientWidth / 2 - L.width / 2) / L.scale, docY: (el.scrollTop - PAD) / L.scale, mx: el.clientWidth / 2, my: 0 }
       }
       setView({ w: el.clientWidth, h: el.clientHeight, top: el.scrollTop })
+      const c = liveCanvas.current
+      if (c) {
+        const dpr = window.devicePixelRatio || 1
+        c.width = Math.round(el.clientWidth * dpr)
+        c.height = Math.round(el.clientHeight * dpr)
+      }
     }
     const ro = new ResizeObserver(measure)
     ro.observe(el)
@@ -205,7 +218,6 @@ export function InkCanvas({
     const ignored = new Set<number>()
     let lastPen = -Infinity
     let momentum = 0
-    let frame = 0
     let predicted: number[] = []
     let inkByFinger = false
     /** Where the drawing pointer is, on screen. */
@@ -283,11 +295,32 @@ export function InkCanvas({
 
     const pressureOf = (e: PointerEvent) => (e.pointerType === 'pen' ? clamp(e.pressure || 0.5, 0.05, 1) : 0.5)
 
+    const clearStroke = () => {
+      const c = liveCanvas.current
+      c?.getContext('2d')?.clearRect(0, 0, c.width, c.height)
+    }
+
+    /** Paints the stroke being drawn, right away (no waiting for the next frame), up to the pencil tip. */
     const paintStroke = () => {
-      frame = 0
       if (ink?.kind !== 'draw') return
-      const d = svgPath(outline({ tool: ink.tool, size: ink.size, feel: ink.feel, pressure: ink.pressure, points: predicted.length ? [...ink.points, ...predicted] : ink.points }, false))
-      livePath.current!.setAttribute('d', d)
+      const c = liveCanvas.current
+      const ctx = c?.getContext('2d')
+      if (!c || !ctx) return
+      const d = svgPath(outline({ tool: ink.tool, size: ink.size, feel: ink.feel, pressure: ink.pressure, points: predicted.length ? [...ink.points, ...predicted] : ink.points }))
+      const { layout: L } = live.current
+      const b = L.boxes[ink.page]
+      const dpr = window.devicePixelRatio || 1
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.clearRect(0, 0, c.width, c.height)
+      ctx.setTransform(dpr * L.scale, 0, 0, dpr * L.scale, dpr * (b.x - el.scrollLeft), dpr * (b.y - el.scrollTop))
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(0, 0, b.w / L.scale, b.h / L.scale)
+      ctx.clip()
+      ctx.fillStyle = ink.color
+      ctx.globalAlpha = ink.tool === 'highlighter' ? HIGHLIGHT_OPACITY : 1
+      ctx.fill(new Path2D(d))
+      ctx.restore()
     }
 
     const eraseAt = (g: Extract<InkGesture, { kind: 'erase' }>, x: number, y: number) => {
@@ -338,11 +371,7 @@ export function InkCanvas({
         ink = { kind: 'lasso', id: e.pointerId, page: hitPage.page, poly: [hitPage.x, hitPage.y] }
       } else {
         const pen = t.tool === 'highlighter' ? t.highlighter : t.pen
-        placeOverlay(hitPage.page)
-        const path = livePath.current!
-        path.setAttribute('fill', pen.color)
-        path.setAttribute('fill-opacity', t.tool === 'highlighter' ? String(HIGHLIGHT_OPACITY) : '1')
-        path.style.mixBlendMode = t.tool === 'highlighter' ? 'multiply' : ''
+        liveCanvas.current!.style.mixBlendMode = t.tool === 'highlighter' ? 'multiply' : ''
         ink = {
           kind: 'draw',
           id: e.pointerId,
@@ -376,7 +405,7 @@ export function InkCanvas({
           const p = at(sample(s, ink.edge), ink.page)!
           predicted.push(p.x, p.y, pressureOf(s))
         }
-        if (!frame) frame = requestAnimationFrame(paintStroke)
+        paintStroke()
       } else if (ink.kind === 'erase') {
         for (const s of samples) {
           const p = at(s, ink.page)!
@@ -404,16 +433,11 @@ export function InkCanvas({
     const endInk = (cancel: boolean) => {
       const g = ink
       ink = null
-      cancelAnimationFrame(frame)
-      frame = 0
       predicted = []
       if (!g) return
       const { pages: cur } = live.current
       if (g.kind === 'draw') {
-        if (cancel && g.points.length < 9) {
-          livePath.current!.setAttribute('d', '')
-          return
-        }
+        if (cancel && g.points.length < 9) return clearStroke()
         const stroke: Stroke = { id: uid(), tool: g.tool, color: g.color, size: g.size, feel: g.feel, pressure: g.pressure, points: thinPoints(g.points) }
         clearLive.current = true
         commit(
@@ -554,7 +578,7 @@ export function InkCanvas({
             ignored.add(e.pointerId)
             return
           }
-          livePath.current!.setAttribute('d', '')
+          clearStroke()
           fingers.set(ink.id, inkAt)
           tap = { t0: ink.started, max: 1, moved: false, starts: new Map([[ink.id, inkAt]]) }
           ink = null
@@ -667,7 +691,6 @@ export function InkCanvas({
       el.removeEventListener('contextmenu', noMenu)
       for (const t of ['gesturestart', 'gesturechange', 'gestureend']) el.removeEventListener(t, gesture)
       stopMomentum()
-      cancelAnimationFrame(frame)
     }
   }, [])
 
@@ -697,12 +720,12 @@ export function InkCanvas({
             )
           })}
           <svg ref={overlay} preserveAspectRatio="none" className="pointer-events-none absolute" style={{ display: 'none' }}>
-            <path ref={livePath} />
             <polyline ref={lassoLine} fill="rgba(0,122,255,0.08)" stroke="#007aff" strokeWidth={1.2} strokeDasharray="5 4" vectorEffect="non-scaling-stroke" />
             <circle ref={eraserDot} r={0} fill="rgba(0,0,0,0.06)" stroke="rgba(0,0,0,0.35)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
           </svg>
         </div>
       </div>
+      <canvas ref={liveCanvas} className="pointer-events-none absolute inset-0 size-full" />
       {shownRuler && <RulerView ruler={shownRuler} />}
     </>
   )
